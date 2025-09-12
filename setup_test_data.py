@@ -18,8 +18,8 @@ def get_database_connection():
     try:
         connection = pymysql.connect(
             host=os.getenv('DB_HOST', 'localhost'),
-            user=os.getenv('DB_USER', 'mauro'),
-            password=os.getenv('DB_PASSWORD', 'santiago01'),
+            user=os.getenv('DB_USER', 'nico'),
+            password=os.getenv('DB_PASSWORD', 'nico'),
             database=os.getenv('DB_NAME', 'bank'),
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
@@ -80,6 +80,13 @@ def insert_test_customers(connection):
                     'nombre': 'Carlos',
                     'nombre_completo': 'Carlos Silva Pérez',
                     'telefono': '+56955556666'
+                },
+                {
+                    'id': str(uuid.uuid4()),
+                    'rut': '87654321',
+                    'nombre': 'Nicolas',
+                    'nombre_completo': 'Nicolas Navarro Aravena',
+                    'telefono': '+56984593400'
                 }
             ]
             

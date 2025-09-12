@@ -2,7 +2,8 @@ flows:
   bloqueo_tarjeta:
     description: "Ayudar a los usuarios a bloquear sus tarjetas de crédito/débito"
     steps:
-      - action: action_saludo_inteligente
+      #- action: action_saludo_inteligente
+      - action: utter_greeting
       - collect: digitos
         description: "los últimos 4 dígitos de la tarjeta a bloquear"
       - action: action_verificar_tarjeta
@@ -35,4 +36,25 @@ flows:
       - action: action_generar_ticket
       - action: action_despedida_contextual
 
+  rut_validado:
+    description: Validación de identidad y push
+    steps:
+      - action: utter_confirmar_identidad
+      - action: action_enviar_push
+      - collect: confirmar_autenticacion
+      - action: utter_autenticacion_exitosa
+      - action: utter_menu_principal
+      - collect: seleccionar_bloqueo
+      - action: utter_bloqueo_tarjeta
+      - action: utter_pedir_tarjeta
+      - collect: ingresar_tarjeta
+      - action: action_verificar_tarjeta
+
+  tarjeta_validada:
+    description: Confirmación y ejecución de bloqueo
+    steps:
+      - action: utter_confirmar_bloqueo
+      - collect: confirmar_bloqueo
+      - action: action_bloquear_tarjeta
+      - action: utter_bloqueo_exitoso
 

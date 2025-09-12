@@ -101,6 +101,10 @@ RESPONSE=$(curl -s -X POST "http://localhost:5000/webhook/twilio/speech?call_sid
   -H "Content-Type: application/x-www-form-urlencoded")
 pretty_print "$RESPONSE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ables de entorno (no incluyo keys hardcodeadas). Estos archivos incluyen:
+
+generación de audio con ElevenLabs (archivos .mp3 únicos por call_sid + uuid),
+
 
 echo ""
 echo "✅ Prueba de conversación completada!"

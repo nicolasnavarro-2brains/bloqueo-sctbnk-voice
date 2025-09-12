@@ -10,7 +10,25 @@ rules:
     steps:
       - intent: confirmar_bloqueo
       - action: flow_continuar_bloqueo
+      
+  - rule: Reintentar RUT hasta 3 veces
+    condition:
+      - slot_was_set:
+          - rut_valido: false
+    steps:
+      - action: utter_rut_invalido
+      - action: utter_pedir_rut
 
+  - rule: Cancelar llamada tras 3 intentos fallidos de RUT
+    condition:
+      - slot_was_set:
+          - rut_intentos: 3
+    steps:
+      - action: utter_despedida
+      - action: action_finalizar_llamada
 
-
-
+  - rule: Si push es rechazado o timeout
+    steps:
+      - intent: rechazar_autenticacion
+      - action: utter_autenticacion_fallida
+      - action: action_transferir_a_ejecutivo

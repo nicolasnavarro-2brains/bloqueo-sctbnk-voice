@@ -1,6 +1,7 @@
 version: "3.1"
 
 nlu:
+# 1.Bienvenida
   - intent: saludar
     examples: |
       - hola
@@ -10,7 +11,30 @@ nlu:
       - saludos
       - hey
       - oye
-
+# 2.Autenticación por RUT 
+  - intent: ingresar_rut
+    examples: |
+      - mi RUT es [12.345.678-9](rut)
+      - es [98.765.432-1](rut)
+      - [11.222.333-4](rut)
+      - [55.666.777-8](rut)
+      - mi RUT es [22.333.444-5](rut)
+      - RUT: [33.444.555-6](rut)
+      - RUT [44.555.666-7](rut)
+      - mi RUT es [77.888.999-0](rut)
+      - es [88.999.000-1](rut)
+      - [99.000.111-2](rut)
+      - mi RUT es [12.345.678-9](rut)
+      - es [98.765.432-1](rut)
+      - [11.222.333-4](rut)
+      - [55.666.777-8](rut)
+      - mi RUT es [22.333.444-5](rut)
+      - RUT: [33.444.555-6](rut)
+      - RUT [44.555.666-7](rut)
+      - mi RUT es [77.888.999-0](rut)
+      - es [88.999.000-1](rut)
+      - [99.000.111-2](rut)
+# 6.Selección 2. Bloqueo de tarjeta
   - intent: bloquear_tarjeta
     examples: |
       - necesito bloquear mi tarjeta
@@ -27,7 +51,7 @@ nlu:
       - necesito cancelar una tarjeta
       - mi tarjeta de crédito fue robada
       - perdí mi tarjeta de débito
-
+#7. Selección de Tarjeta
   - intent: proporcionar_digitos
     examples: |
       - es la [1234](digitos)
@@ -50,7 +74,7 @@ nlu:
       - [8888](digitos)
       - [9999](digitos)
       - [0000](digitos)
-
+#9. Ejecución y Cierre confirma
   - intent: confirmar_bloqueo
     examples: |
       - [sí](confirmar_bloqueo)
@@ -82,6 +106,26 @@ nlu:
       - [claro que sí](confirmar_bloqueo)
       - [por supuesto que sí](confirmar_bloqueo)
       - [desde luego que sí](confirmar_bloqueo)
+#9.1 Ejecución y Cierre cancelar
+  - intent: cancelar_bloqueo
+    examples: |
+      - [no](confirmar_bloqueo)
+      - [cancelar](confirmar_bloqueo)
+      - [detener](confirmar_bloqueo)
+      - [espera](confirmar_bloqueo)
+      - [alto](confirmar_bloqueo)
+      - [no, espera](confirmar_bloqueo)
+      - [no, detén el proceso](confirmar_bloqueo)
+      - [no, cancela](confirmar_bloqueo)
+      - [no, no quiero bloquear](confirmar_bloqueo)
+      - [no, no bloquees la tarjeta](confirmar_bloqueo)
+      - [no, no procede](confirmar_bloqueo)
+      - [no, no está bien](confirmar_bloqueo)
+      - [no, no de acuerdo](confirmar_bloqueo)
+      - [no, no confirmo](confirmar_bloqueo)
+      - [no, no procede con el bloqueo](confirmar_bloqueo)
+      - [no, no bloquea la tarjeta](confirmar_bloqueo)
+      - [no, gracias](confirmar_bloqueo)
 
   - intent: confirmar_generacion
     examples: |
@@ -90,9 +134,7 @@ nlu:
       - adelante con el ticket
       - genera el ticket
       - sí, procede con la generación
-
-
-
+      
   - intent: despedida
     examples: |
       - adiós
@@ -106,3 +148,15 @@ nlu:
       - perfecto, gracias
       - excelente, gracias
       - está bien, gracias
+
+  - intent: ingresar_rut
+    examples: |
+    - mi rut es 123456789
+    - 123456789
+    - 12 millones 345 mil 678 9
+    - mi rut es 987654321
+    - 987654321
+    - 98 millones 765 mil 432 1
+    - mi rut es 112223334
+    - 112223334
+    - 11 millones 222 mil 333 4 

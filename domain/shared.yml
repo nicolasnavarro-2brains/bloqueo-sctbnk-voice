@@ -47,6 +47,31 @@ responses:
   utter_transfer_cancelled:
     - text: "Tu solicitud de bloqueo ha sido cancelada."
 
+  utter_bienvenida:
+    - text: "Bienvenido a Scotiabank. Gracias por comunicarse con nosotros."
+  utter_pedir_rut:
+    - text: "Por favor, ingrese su RUT sin puntos y sin guion. Ejemplo: 123456789."
+  utter_rut_invalido:
+    - text: "El RUT ingresado no es válido. Inténtelo nuevamente."
+  utter_confirmar_identidad:
+    - text: "Estamos enviando una notificación a su app Scotiabank para confirmar su identidad."
+  utter_autenticacion_exitosa:
+    - text: "Autenticación exitosa."
+  utter_autenticacion_fallida:
+    - text: "No pudimos completar la autenticación. Será transferido a un ejecutivo."
+  utter_menu_principal:
+    - text: "Seleccione la opción deseada: 1 para consultas de saldo, 2 para bloqueo de tarjeta, 3 para otros servicios."
+  utter_bloqueo_tarjeta:
+    - text: "Ha seleccionado bloqueo de tarjeta."
+  utter_pedir_tarjeta:
+    - text: "Ingrese los últimos 4 dígitos de la tarjeta que desea bloquear."
+  utter_confirmar_bloqueo:
+    - text: "Está a punto de bloquear su tarjeta terminada en {selected_card}. Presione 1 para confirmar o 2 para cancelar."
+  utter_bloqueo_exitoso:
+    - text: "Su tarjeta ha sido bloqueada exitosamente. Gracias por preferir Scotiabank."
+  utter_despedida:
+    - text: "Gracias por comunicarse con Scotiabank. Hasta luego."
+
 # Configuración de entidades
 entities:
   - digitos
@@ -138,6 +163,29 @@ slots:
     type: bool
     mappings:
       - type: controlled
+  twilio_call_sid:
+    type: text
+  rut:
+    type: text
+  rut_attempts:
+    type: text
+    initial_value: 0
+  rut_valid:
+    type: bool
+    initial_value: false
+  auth_status:
+    type: text
+    initial_value: pending
+  tarjeta_valida:
+    type: bool
+  confirm_block:
+    type: bool
+  rut_valido:
+    type: bool
+    initial_value: false
+  rut_intentos:
+    type: text
+    initial_value: 0
 
 # Configuración de intents
 intents:
@@ -152,6 +200,11 @@ intents:
   - fallback
   - transfer_money
   - digitos
+  - ingresar_rut
+  - ingresar_tarjeta
+  - confirmar_autenticacion
+  - rechazar_autenticacion
+  - seleccionar_bloqueo
 
 # Configuración de acciones
 actions:

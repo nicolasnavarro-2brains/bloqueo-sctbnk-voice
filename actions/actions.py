@@ -473,3 +473,141 @@ class ActionEndGreeting(Action):
         message = "Me alegra que me hayas saludado. Si necesitas ayuda con algo específico, no dudes en decírmelo."
         dispatcher.utter_message(text=message)
         return []
+    
+class ActionVerificarRUT(Action):
+    def name(self) -> Text:
+        return "action_verificar_rut"
+
+    def run(self, dispatcher, tracker, domain):
+        rut = tracker.latest_message.get("text").replace("RUT:", "")
+        intentos = tracker.get_slot("rut_intentos") or 0
+        logger.info(f"🔎 Verificando RUT: {rut}")
+
+        if rut.isdigit() and len(rut) >= 8:
+            return [SlotSet("rut_valido", True), SlotSet("rut_intentos", 0)]
+        else:
+            return [SlotSet("rut_valido", False), SlotSet("rut_intentos", intentos + 1)]
+
+class ActionVerificarTarjeta(Action):
+    def name(self) -> Text:
+        return "action_verificar_tarjeta"
+
+    def run(self, dispatcher, tracker, domain):
+        digits = tracker.latest_message.get("text").replace("TARJETA:", "")
+        logger.info(f"💳 Verificando tarjeta {digits}")
+
+        tarjetas_validas = ["1234", "5678"]
+        if digits in tarjetas_validas:
+            return [SlotSet("selected_card", digits)]
+        else:
+            dispatcher.utter_message("La tarjeta ingresada no es válida.")
+            return []
+
+class ActionBloquearTarjeta(Action):
+    def name(self) -> Text:
+        return "action_bloquear_tarjeta"
+
+    def run(self, dispatcher, tracker, domain):
+        card = tracker.get_slot("selected_card")
+        logger.info(f"🚫 Bloqueando tarjeta {card}")
+        # Aquí llamas a tu función real de DB
+        dispatcher.utter_message(f"✅ Tarjeta {card} bloqueada en sistema.")
+        return []
+    
+class ActionConfirmarIdentidad(Action):
+    def name(self) -> Text:
+        return "action_confirmar_identidad"
+
+    def run(self, dispatcher, tracker, domain):
+        # Mensaje IVR
+        mensaje = ("Estamos enviando una notificación a su app Scotiabank para confirmar su identidad. "
+                   "Por favor, autorice desde su dispositivo móvil.")
+        dispatcher.utter_message(text=mensaje)
+
+        # Simulación de push notification a la app (ejemplo REST)
+        try:
+            response = requests.post(
+                os.getenv("APP_PUSH_ENDPOINT"),
+                json={
+                    "customer_id": tracker.get_slot("customer_id"),
+                    "titulo": "Confirmación de identidad",
+                    "mensaje": "Autoriza el bloqueo de tu tarjeta",
+                    "acciones": ["Autorizar", "Rechazar"]
+                }
+            )
+            if response.status_code == 200:
+                logger.info("📲 Push enviada correctamente")
+            else:
+                logger.warning(f"⚠️ Error push: {response.status_code} {response.text}")
+        except Exception as e:
+            logger.error(f"❌ No se pudo enviar push: {e}")
+
+        return []
+# actions/actions.py
+from rasa_sdk import Action, Tracker
+from rasa_sdk.executor import CollectingDispatcher
+from typing import Any, Dict, List
+import random
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Acción: enviar push notification
+class ActionEnviarPush(Action):
+    def name(self) -> str:
+        return "action_enviar_push"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
+        
+        # Simulación del push
+        logger.info("📲 Enviando push a la app Scotiabank...")
+        dispatcher.utter_message(text="📲 Hemos enviado una notificación a su app Scotiabank. Por favor autorice.")
+        
+        # Aquí iría integración con API real de push
+        return []
+
+# Acción: bloquear tarjeta
+class ActionBloquearTarjeta(Action):
+    def name(self) -> str:
+        return "action_bloquear_tarjeta"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
+        
+        tarjeta = tracker.get_slot("selected_card")
+        if tarjeta:
+            dispatcher.utter_message(text=f"✅ La tarjeta terminada en {tarjeta} ha sido bloqueada exitosamente.")
+        else:
+            dispatcher.utter_message(text="⚠️ No encontré la tarjeta para bloquear.")
+        
+        return []
+
+# Acción: generar ticket
+class ActionGenerarTicket(Action):
+    def name(self) -> str:
+        return "action_generar_ticket"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
+        
+        ticket_number = random.randint(100000, 999999)
+        dispatcher.utter_message(text=f"🎟️ Se generó el ticket número {ticket_number}.")
+        
+        return [{"event": "slot", "name": "ticket_number", "value": str(ticket_number)}]
+
+# Acción: transferir a ejecutivo
+class ActionTransferirEjecutivo(Action):
+    def name(self) -> str:
+        return "action_transferir_a_ejecutivo"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
+        
+        dispatcher.utter_message(text="📞 Te estoy transfiriendo con un ejecutivo humano...")
+        # Aquí deberías invocar Twilio <Dial> para transferir la llamada
+        return []
