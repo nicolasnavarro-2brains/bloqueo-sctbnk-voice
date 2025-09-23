@@ -1,44 +1,14 @@
+version: "3.1"
+
 flows:
   bloqueo_tarjeta:
     description: "Ayudar a los usuarios a bloquear sus tarjetas de crédito/débito"
     steps:
-      #- action: action_saludo_inteligente
       - action: utter_greeting
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-
-  # Flujo para continuar conversación sin saludo
-  continuar_bloqueo:
-    description: "Continuar el proceso de bloqueo sin saludo repetitivo"
-    steps:
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-
-  # Flujo para usuarios desconocidos (sin saludo inteligente)
-  bloqueo_tarjeta_usuario_desconocido:
-    description: "Ayudar a usuarios desconocidos a bloquear sus tarjetas sin saludo inteligente"
-    steps:
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-
-  rut_validado:
-    description: Validación de identidad y push
-    steps:
+      - action: utter_pedir_rut
+      - collect: rut
+        description: "Validación del RUT del usuario"
+      - action: action_validar_rut
       - action: utter_confirmar_identidad
       - action: action_enviar_push
       - collect: confirmar_autenticacion
@@ -47,14 +17,20 @@ flows:
       - collect: seleccionar_bloqueo
       - action: utter_bloqueo_tarjeta
       - action: utter_pedir_tarjeta
-      - collect: ingresar_tarjeta
+      - collect: digitos
       - action: action_verificar_tarjeta
-
-  tarjeta_validada:
-    description: Confirmación y ejecución de bloqueo
-    steps:
       - action: utter_confirmar_bloqueo
       - collect: confirmar_bloqueo
       - action: action_bloquear_tarjeta
       - action: utter_bloqueo_exitoso
+      - action: utter_despedida
 
+  continuar_bloqueo:
+    description: "Continuar proceso de bloqueo sin saludo repetitivo"
+    steps:
+      - collect: digitos
+      - action: action_verificar_tarjeta
+      - collect: confirmar_bloqueo
+      - action: action_bloquear_tarjeta
+      - action: utter_bloqueo_exitoso
+      - action: utter_despedida
