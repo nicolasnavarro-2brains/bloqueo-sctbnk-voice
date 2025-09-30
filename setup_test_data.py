@@ -65,7 +65,7 @@ def insert_test_customers(connection):
                     'rut': '12345678',
                     'nombre': 'Mauricio',
                     'nombre_completo': 'Mauricio Martínez González',
-                    'telefono': '+56982221070'
+                    'telefono': '+56982079489'
                 },
                 {
                     'id': str(uuid.uuid4()),

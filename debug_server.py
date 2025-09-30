@@ -15,7 +15,7 @@ def debug_customer_lookup():
     print("🔍 Debug de búsqueda de clientes...")
     
     # Simular exactamente lo que hace el servidor
-    phone_number = "+56984593400"
+    phone_number = "+56982079489"  # Cambiar por el número a probar
     
     # Configuración de base de datos
     db_config = {

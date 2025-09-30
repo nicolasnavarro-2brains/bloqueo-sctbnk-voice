@@ -1,85 +1,255 @@
 version: "3.1"
 
+# Configuración del bot
 assistant_id: sctbnk_voice_assistant
 user_id: caller
 
+# Configuración de sesión
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
 
+# Configuración de respuestas
 responses:
   utter_greeting:
     - text: "¡Buenos días! Soy el asistente de Scotiabank, ¿en qué puedo ayudarte?"
 
-  utter_bienvenida:
-    - text: "Bienvenido a Scotiabank. Gracias por comunicarse con nosotros."
+  utter_ask_card_digits:
+    - text: "Perfecto, te puedo ayudar con eso. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos."
 
-  utter_pedir_rut:
-    - text: "Por favor, ingrese su RUT sin puntos y sin guion. Ejemplo: 123456789."
+  utter_ask_digitos:
+    - text: "Perfecto, te puedo ayudar con eso. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos."
 
-  utter_rut_invalido:
-    - text: "El RUT ingresado no es válido. Inténtelo nuevamente."
+  utter_confirm_blocking:
+    - text: "Entiendo, voy a generar un ticket para el bloqueo de tu tarjeta. ¿Te parece bien proceder?"
 
-  utter_confirmar_identidad:
-    - text: "Estamos enviando una notificación a su app Scotiabank para confirmar su identidad."
+  utter_ask_confirmar_bloqueo:
+    - text: "¿Confirmas que quieres proceder con el bloqueo de tu tarjeta?"
 
-  utter_autenticacion_exitosa:
-    - text: "Autenticación exitosa."
+  utter_collect_digitos:
+    - text: "Por favor, proporciona los últimos 4 dígitos de la tarjeta que quieres bloquear."
 
-  utter_autenticacion_fallida:
-    - text: "No pudimos completar la autenticación. Será transferido a un ejecutivo."
+  utter_collect_confirmar_bloqueo:
+    - text: "¿Confirmas que quieres proceder con el bloqueo de tu tarjeta?"
 
-  utter_menu_principal:
-    - text: "Seleccione la opción deseada: 1 para consultas de saldo, 2 para bloqueo de tarjeta, 3 para otros servicios."
+  utter_ticket_created:
+    - text: "Excelente, se ha generado el ticket número {ticket_number}. En instantes un ejecutivo realizará el bloqueo de tu tarjeta."
 
-  utter_bloqueo_tarjeta:
-    - text: "Ha seleccionado bloqueo de tarjeta."
+  utter_goodbye:
+    - text: "Gracias por contactarte con nosotros. ¡Que tengas un excelente día!"
 
-  utter_pedir_tarjeta:
-    - text: "Ingrese los últimos 4 dígitos de la tarjeta que desea bloquear."
-
-  utter_confirmar_bloqueo:
-    - text: "Está a punto de bloquear su tarjeta terminada en {selected_card}. Presione 1 para confirmar o 2 para cancelar."
-
-  utter_bloqueo_exitoso:
-    - text: "Su tarjeta ha sido bloqueada exitosamente. Gracias por preferir Scotiabank."
-
-  utter_despedida:
-    - text: "Gracias por comunicarse con Scotiabank. Hasta luego."
+  utter_card_not_found:
+    - text: "No encontré una tarjeta con esos últimos 4 dígitos. ¿Podrías verificar y proporcionarme los dígitos correctos?"
 
   utter_fallback:
-    - text: "Lo siento, no pude entenderte. Te voy a conectar con un ejecutivo."
+    - text: "Lo siento, no pude entenderte bien. Te voy a conectar con un ejecutivo que te ayudará personalmente."
 
+  utter_transfer_cancelled:
+    - text: "Tu solicitud de bloqueo ha sido cancelada."
+
+  utter_bienvenida:
+    - text: "Bienvenido a Scotiabank. Gracias por comunicarse con nosotros."
+  utter_pedir_rut:
+    - text: "Por favor, ingrese su RUT sin puntos y sin guion. Ejemplo: 123456789."
+  utter_rut_invalido:
+    - text: "El RUT ingresado no es válido. Inténtelo nuevamente."
+  utter_confirmar_identidad:
+    - text: "Estamos enviando una notificación a su app Scotiabank para confirmar su identidad."
+  utter_autenticacion_exitosa:
+    - text: "Autenticación exitosa."
+  utter_autenticacion_fallida:
+    - text: "No pudimos completar la autenticación. Será transferido a un ejecutivo."
+  utter_menu_principal:
+    - text: "Seleccione la opción deseada: 1 para consultas de saldo, 2 para bloqueo de tarjeta, 3 para otros servicios."
+  utter_bloqueo_tarjeta:
+    - text: "Ha seleccionado bloqueo de tarjeta."
+  utter_pedir_tarjeta:
+    - text: "Ingrese los últimos 4 dígitos de la tarjeta que desea bloquear."
+  utter_confirmar_bloqueo:
+    - text: "Está a punto de bloquear su tarjeta terminada en {selected_card}. Presione 1 para confirmar o 2 para cancelar."
+  utter_bloqueo_exitoso:
+    - text: "Su tarjeta ha sido bloqueada exitosamente. Gracias por preferir Scotiabank."
+  utter_despedida:
+    - text: "Gracias por comunicarse con Scotiabank. Hasta luego."
+  utter_ask_confirmar_autenticacion:
+    - text: "¿Confirmas la autenticación en tu app?"
+  utter_ask_seleccionar_bloqueo:
+    - text: "¿Qué tipo de bloqueo deseas realizar? (1: tarjeta, 2: cuenta)"
+  utter_ask_ingresar_tarjeta:
+    - text: "Por favor, ingresa los últimos 4 dígitos de tu tarjeta."
+
+# Configuración de entidades
 entities:
-  - rut
   - digitos
+  - ticket_number
+  - card_type
   - confirmar_bloqueo
-  - selected_card
-  - tarjeta_valida
-  - rut_valido
-  - rut_intentos
-  - auth_status
   - customer_id
   - customer_full_name
   - customer_phone
+  - available_cards
+  - selected_card
+  - card_blocked
+  - case_number
+  - blocked_card_name
 
+# Configuración de slots
 slots:
+  saludo_dado:
+    type: bool
+    mappings:
+      - type: controlled
+  digitos:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: digitos
+  ticket_number:
+    type: text
+    mappings:
+      - type: controlled
+  card_type:
+    type: text
+    mappings:
+      - type: from_llm
+  tarjeta_encontrada:
+    type: bool
+    mappings:
+      - type: controlled
+  confirmar_bloqueo:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: confirmar_bloqueo
+  ticket_created:
+    type: bool
+    mappings:
+      - type: controlled
+  customer_id:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: customer_id
+  customer_full_name:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: customer_full_name
+  customer_phone:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: customer_phone
+  available_cards:
+    type: list
+    mappings:
+      - type: from_entity
+        entity: available_cards
+  selected_card:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: selected_card
+  card_blocked:
+    type: bool
+    mappings:
+      - type: from_entity
+        entity: card_blocked
+  case_number:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: case_number
+  blocked_card_name:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: blocked_card_name
+  usuario_desconocido:
+    type: bool
+    mappings:
+      - type: controlled
+  twilio_call_sid:
+    type: text
   rut:
     type: text
+    mappings:
+      - type: from_text
+  rut_attempts:
+    type: text
+    initial_value: 0
+  rut_valid:
+    type: bool
+    initial_value: false
+  auth_status:
+    type: text
+    initial_value: pending
+  tarjeta_valida:
+    type: bool
+  confirm_block:
+    type: bool
   rut_valido:
     type: bool
     initial_value: false
   rut_intentos:
     type: text
     initial_value: 0
-  digitos:
+  confirmar_autenticacion:
     type: text
-  selected_card:
+    mappings:
+      - type: from_text
+  seleccionar_bloqueo:
     type: text
-  confirmar_bloqueo:
-    type: bool
-  auth_status:
+    mappings:
+      - type: from_text
+  ingresar_tarjeta:
     type: text
-    initial_value: pending
-  tarjeta_valida:
-    type: bool
+    mappings:
+      - type: from_text
+
+# Configuración de intents
+intents:
+  - saludar
+  - bloquear_tarjeta
+  - proporcionar_digitos
+  - confirmar_bloqueo
+  - confirmar_generacion
+  - despedida
+  - negar
+  - aclarar
+  - fallback
+  - transfer_money
+  - digitos
+  - ingresar_rut
+  - ingresar_tarjeta
+  - confirmar_autenticacion
+  - rechazar_autenticacion
+  - seleccionar_bloqueo
+  - quiero_bloquear_tarjeta
+
+# Configuración de acciones
+actions:
+  - utter_greeting
+  - utter_ask_card_digits
+  - utter_confirm_blocking
+  - utter_ticket_created
+  - utter_goodbye
+  - utter_card_not_found
+  - utter_fallback
+  - utter_transfer_cancelled
+  - utter_ask_digitos
+  - utter_ask_confirmar_bloqueo
+  - utter_collect_digitos
+  - utter_collect_confirmar_bloqueo
+  - action_saludo_inteligente
+  - action_saludo_usuario_desconocido
+  - action_saludo_contextual
+  - action_solicitar_digitos
+  - action_verificar_tarjeta
+  - action_confirmar_bloqueo
+  - action_generar_ticket
+  - action_despedida_contextual
+  - action_transferir_a_ejecutivo
+  - action_enviar_push
+  - action_bloquear_tarjeta  
+  - action_verificar_rut

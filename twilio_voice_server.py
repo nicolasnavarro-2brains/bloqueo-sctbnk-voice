@@ -18,7 +18,7 @@ load_dotenv()
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
 ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID", "iNlaSRLu8vd4RtnF3w9i")
 RASA_URL = os.getenv("RASA_URL", "http://localhost:5005/webhooks/rest/webhook")
-BASE_URL = os.getenv("BASE_URL", "https://bf369eb1213e.ngrok-free.app")  # ngrok pública
+BASE_URL = os.getenv("BASE_URL", "https://8e85dbebd1ae.ngrok-free.app")  # ngrok pública
 
 # Carpeta para audios
 AUDIO_FOLDER = os.path.join(os.getcwd(), "audio")
@@ -109,13 +109,50 @@ def responder_con_tts_twiml(container, texto, call_sid, tag="msg"):
         container.play(f"{BASE_URL}{mp3_url}")
 
 # -------------------------------
-# Cache de llamadas
+# Cache 
 # -------------------------------
 phone_cache = {}  # call_sid -> phone
-
+rut_attempts_cache = {}  # call_sid -> número de intentos
+rut_max_attempts = 3
+autorizacion_cache = {}
 # -------------------------------
 # Rutas Flask
 # -------------------------------
+def delegar_a_rasa(session_id, user_message):
+    payload = {"sender": session_id, "message": user_message}
+    try:
+        r = requests.post(RASA_URL, json=payload)
+        r.raise_for_status()
+        return r.json()  # lista de mensajes [{"recipient_id":..., "text":...}, ...]
+    except Exception as e:
+        logger.error(f"❌ Error al comunicar con Rasa: {e}")
+        return []
+
+def verificar_rut_en_bd(rut: str):
+    """
+    Verifica si el RUT existe en la base de datos.
+    Retorna el registro del cliente si existe, None si no.
+    """
+    try:
+        conn = get_database_connection()
+        if not conn:
+            return None
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM customers WHERE rut = %s LIMIT 1"
+            cursor.execute(sql, (rut,))
+            cliente = cursor.fetchone()
+            if cliente:
+                logger.info(f"✅ Cliente encontrado en BD con RUT {rut}")
+            else:
+                logger.warning(f"❌ RUT {rut} no encontrado en BD")
+            return cliente
+    except Exception as e:
+        logger.error(f"⚠️ Error al verificar RUT en BD: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
 @app.route("/audio/<filename>")
 def serve_audio(filename):
     return send_from_directory(AUDIO_FOLDER, filename)
@@ -143,7 +180,6 @@ def incoming_call():
 
     gather = Gather(input="dtmf", num_digits=8, timeout=10,
                     action=f"/webhook/twilio/collect_rut?call_sid={call_sid}")
-    #responder_con_tts_twiml(gather, "Ingrese su RUT.", call_sid, "ask_rut")
     response.append(gather)
 
     return Response(str(response), mimetype="text/xml")
@@ -154,72 +190,108 @@ def collect_rut():
     rut = request.form.get("Digits", "")
     phone = phone_cache.get(call_sid)
     customer = get_customer_by_phone(phone)
-    logger.info(f"🆔 RUT recibido: {rut} de {phone}")
-
     response = VoiceResponse()
-    if not re.fullmatch(r"\d{7,8}", rut):
-        responder_con_tts_twiml(response, "RUT inválido. La llamada será finalizada.", call_sid, "invalid_rut")
+
+    # Inicializar contador de intentos
+    if call_sid not in rut_attempts_cache:
+        rut_attempts_cache[call_sid] = 0
+
+    # Validar RUT en DB
+    if not re.fullmatch(r"\d{7,8}", rut) or (customer and str(customer.get("rut")) != rut):
+        rut_attempts_cache[call_sid] += 1
+        if rut_attempts_cache[call_sid] >= rut_max_attempts:
+            responder_con_tts_twiml(response,
+                "Número máximo de intentos alcanzado. La llamada será finalizada.",
+                call_sid, "rut_failed")
+            response.hangup()
+            return Response(str(response), mimetype="text/xml")
+        else:
+            responder_con_tts_twiml(response,
+                f"RUT inválido. Intento {rut_attempts_cache[call_sid]} de {rut_max_attempts}. Por favor, ingréselo nuevamente.",
+                call_sid, "rut_retry")
+            gather = Gather(input="dtmf", num_digits=8, timeout=10,
+                            action=f"/webhook/twilio/collect_rut?call_sid={call_sid}")
+            response.append(gather)
+            return Response(str(response), mimetype="text/xml")
+
+    # ✅ RUT válido
+    responder_con_tts_twiml(response,
+        "Estamos enviando una notificación a su app Scotiabank para confirmar su identidad. Por favor, autorice desde su dispositivo móvil.",
+        call_sid, "push_auth")
+
+    # Aquí se simula autorización push (reemplazar con IVR real)
+    autorizado = True
+    autorizacion_cache[call_sid] = autorizado
+
+    if not autorizado:
+        responder_con_tts_twiml(response,
+            "No pudimos completar la autenticación. Será transferido a un ejecutivo.",
+            call_sid, "auth_failed")
         response.hangup()
         return Response(str(response), mimetype="text/xml")
 
-    payload = {"sender": call_sid, "message": f"RUT:{rut}"}
-    requests.post(RASA_URL, json=payload)
+    # ✅ Autenticación exitosa
+    responder_con_tts_twiml(response, "Autenticación exitosa. Ahora puede decir su solicitud.", call_sid, "auth_success")
 
-    responder_con_tts_twiml(response, "RUT recibido. Presione 2 para bloqueo de tarjeta.", call_sid, "menu")
-    gather = Gather(input="dtmf", num_digits=1, timeout=10,
-                    action=f"/webhook/twilio/menu?call_sid={call_sid}")
+    # --- Inicio de sesión Rasa ---
+    # Notificar a Rasa que la llamada está autenticada
+    delegar_a_rasa(call_sid, "call_authenticated")
+
+    # Solicitar al usuario que hable y capturar voz
+    gather = Gather(
+        input="speech",
+        action=f"/webhook/twilio/rasa_conversation?call_sid={call_sid}",
+        speech_timeout="auto",
+        language="es-CL"
+    )
+    gather.say("")
     response.append(gather)
+
     return Response(str(response), mimetype="text/xml")
 
-@app.route("/webhook/twilio/menu", methods=["POST"])
-def menu():
+@app.route("/webhook/twilio/rasa_conversation", methods=["POST"])
+def rasa_conversation():
     call_sid = request.args.get("call_sid")
-    option = request.form.get("Digits")
+    speech_text = request.form.get("SpeechResult", "").strip()
     response = VoiceResponse()
-    logger.info(f"📋 Menú seleccionado: {option}")
 
-    if option == "2":
-        gather = Gather(input="dtmf", num_digits=4, timeout=10,
-                        action=f"/webhook/twilio/card?call_sid={call_sid}")
-        responder_con_tts_twiml(gather, "Ha seleccionado bloqueo de tarjeta. Ingrese los últimos 4 dígitos de su tarjeta.", call_sid, "ask_card")
+    logger.info(f"🎤 Usuario dijo: {speech_text}")
+
+    if not speech_text:
+        # Reintentar si no entendió
+        gather = Gather(
+            input="speech",
+            action=f"/webhook/twilio/rasa_conversation?call_sid={call_sid}",
+            speech_timeout="auto",
+            language="es-CL"
+        )
+        gather.say("No entendí lo que dijo. Por favor, repita.")
+        response.append(gather)
+        return Response(str(response), mimetype="text/xml")
+
+    # Enviar texto a Rasa
+    rasa_respuestas = delegar_a_rasa(call_sid, speech_text)
+
+    if rasa_respuestas:
+        for idx, msg in enumerate(rasa_respuestas):
+            texto = msg.get("text")
+            if texto:
+                responder_con_tts_twiml(response, texto, call_sid, f"rasa_{idx}")
+                # Continuar escuchando si quieres diálogo abierto
+        gather = Gather(
+            input="speech",
+            action=f"/webhook/twilio/rasa_conversation?call_sid={call_sid}",
+            speech_timeout="auto",
+            language="es-CL"
+        )
+        #gather.say("")
         response.append(gather)
     else:
-        responder_con_tts_twiml(response, "Opción no válida. Gracias por llamar a Scotiabank.", call_sid, "invalid")
+        responder_con_tts_twiml(response,
+            "No recibí respuesta del asistente. Será transferido a un ejecutivo.",
+            call_sid, "no_rasa")
         response.hangup()
 
-    return Response(str(response), mimetype="text/xml")
-
-@app.route("/webhook/twilio/card", methods=["POST"])
-def card():
-    call_sid = request.args.get("call_sid")
-    digits = request.form.get("Digits")
-    logger.info(f"💳 Tarjeta ingresada: {digits}")
-
-    payload = {"sender": call_sid, "message": f"TARJETA:{digits}"}
-    requests.post(RASA_URL, json=payload)
-
-    response = VoiceResponse()
-    gather = Gather(input="dtmf", num_digits=1, timeout=10,
-                    action=f"/webhook/twilio/confirm_block?call_sid={call_sid}&card={digits}")
-    responder_con_tts_twiml(gather, f"Está a punto de bloquear su tarjeta terminada en {digits}. Presione 1 para confirmar o 2 para cancelar.", call_sid, "confirm")
-    response.append(gather)
-    return Response(str(response), mimetype="text/xml")
-
-@app.route("/webhook/twilio/confirm_block", methods=["POST"])
-def confirm_block():
-    call_sid = request.args.get("call_sid")
-    card = request.args.get("card")
-    option = request.form.get("Digits")
-
-    response = VoiceResponse()
-    if option == "1":
-        payload = {"sender": call_sid, "message": f"BLOQUEAR:{card}"}
-        requests.post(RASA_URL, json=payload)
-        responder_con_tts_twiml(response, f"Su tarjeta terminada en {card} ha sido bloqueada exitosamente. Gracias por preferir Scotiabank.", call_sid, "blocked")
-    else:
-        responder_con_tts_twiml(response, "Operación cancelada. Gracias por comunicarse con Scotiabank.", call_sid, "cancel")
-
-    response.hangup()
     return Response(str(response), mimetype="text/xml")
 
 # -------------------------------

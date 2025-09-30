@@ -1,73 +1,154 @@
 version: "3.1"
 
 nlu:
-# 1. Bienvenida
-- intent: saludar
-  examples: |
-    - hola
-    - buenos días
-    - buenas tardes
-    - buenas noches
-    - saludos
-    - hey
-    - oye
+# 1.Bienvenida
+  - intent: quiero_bloquear_tarjeta
+    examples: |
+      - hola, quiero bloquear mi tarjeta
+      - necesito bloquear mi tarjeta
+      - quiero bloquear mi tarjeta
+      - quiero bloquear una tarjeta
+      - necesito bloquear una tarjeta
+      - hola, necesito bloquear mi tarjeta
+      - necesito bloquear una tarjeta
+      - buenas, quiero bloquear mi tarjeta
+      - necesito bloquear mi tarjeta
+      - quiero bloquear una tarjeta
+      - necesito bloquear una tarjeta   
+# 2.Autenticación por RUT 
+  - intent: ingresar_rut
+    examples: |
+      - mi RUT es [12.345.678-9](rut)
+      - es [98.765.432-1](rut)
+      - [11.222.333-4](rut)
+      - [55.666.777-8](rut)
+      - mi RUT es [22.333.444-5](rut)
+      - RUT: [33.444.555-6](rut)
+      - RUT [44.555.666-7](rut)
+      - mi RUT es [77.888.999-0](rut)
+      - es [88.999.000-1](rut)
+      - [99.000.111-2](rut)
+      - mi RUT es [12.345.678-9](rut)
+      - es [98.765.432-1](rut)
+      - [11.222.333-4](rut)
+      - [55.666.777-8](rut)
+      - mi RUT es [22.333.444-5](rut)
+      - RUT: [33.444.555-6](rut)
+      - RUT [44.555.666-7](rut)
+      - mi RUT es [77.888.999-0](rut)
+      - es [88.999.000-1](rut)
+      - [99.000.111-2](rut)
+# 6.Selección 2. Bloqueo de tarjeta
+  - intent: bloquear_tarjeta
+    examples: |
+      - necesito bloquear mi tarjeta
+      - quiero bloquear mi tarjeta
+      - mi tarjeta fue robada
+      - perdí mi tarjeta
+      - necesito cancelar mi tarjeta
+      - mi tarjeta está comprometida
+      - quiero reportar mi tarjeta como perdida
+      - bloquea mi tarjeta
+      - cancela mi tarjeta
+      - reporta mi tarjeta
+      - quiero bloquear una tarjeta
+      - necesito cancelar una tarjeta
+      - mi tarjeta de crédito fue robada
+      - perdí mi tarjeta de débito
+#7. Selección de Tarjeta
+  - intent: proporcionar_digitos
+    examples: |
+      - es la [1234](digitos)
+      - son los [5678](digitos)
+      - [9012](digitos)
+      - la tarjeta [3456](digitos)
+      - [7890](digitos)
+      - mi tarjeta termina en [1111](digitos)
+      - los últimos cuatro son [2222](digitos)
+      - [3333](digitos)
+      - [4444](digitos)
+      - [5555](digitos)
+      - [1111](digitos)
+      - [2222](digitos)
+      - [3333](digitos)
+      - [4444](digitos)
+      - [5555](digitos)
+      - [6666](digitos)
+      - [7777](digitos)
+      - [8888](digitos)
+      - [9999](digitos)
+      - [0000](digitos)
+#9. Ejecución y Cierre confirma
+  - intent: confirmar_bloqueo
+    examples: |
+      - [sí](confirmar_bloqueo)
+      - [correcto](confirmar_bloqueo)
+      - [perfecto](confirmar_bloqueo)
+      - [adelante](confirmar_bloqueo)
+      - [procede](confirmar_bloqueo)
+      - [sí, procede](confirmar_bloqueo)
+      - [está bien](confirmar_bloqueo)
+      - [de acuerdo](confirmar_bloqueo)
+      - [confirmo](confirmar_bloqueo)
+      - [procede con el bloqueo](confirmar_bloqueo)
+      - [sí, bloquea la tarjeta](confirmar_bloqueo)
+      - [claro](confirmar_bloqueo)
+      - [por favor](confirmar_bloqueo)
+      - [si](confirmar_bloqueo)
+      - [ok](confirmar_bloqueo)
+      - [vale](confirmar_bloqueo)
+      - [excelente](confirmar_bloqueo)
+      - [bueno](confirmar_bloqueo)
+      - [bien](confirmar_bloqueo)
+      - [por supuesto](confirmar_bloqueo)
+      - [naturalmente](confirmar_bloqueo)
+      - [desde luego](confirmar_bloqueo)
+      - [por cierto](confirmar_bloqueo)
+      - [efectivamente](confirmar_bloqueo)
+      - [indudablemente](confirmar_bloqueo)
+      - [sin duda](confirmar_bloqueo)
+      - [claro que sí](confirmar_bloqueo)
+      - [por supuesto que sí](confirmar_bloqueo)
+      - [desde luego que sí](confirmar_bloqueo)
+#9.1 Ejecución y Cierre cancelar
+  - intent: cancelar_bloqueo
+    examples: |
+      - [no](confirmar_bloqueo)
+      - [cancelar](confirmar_bloqueo)
+      - [detener](confirmar_bloqueo)
+      - [espera](confirmar_bloqueo)
+      - [alto](confirmar_bloqueo)
+      - [no, espera](confirmar_bloqueo)
+      - [no, detén el proceso](confirmar_bloqueo)
+      - [no, cancela](confirmar_bloqueo)
+      - [no, no quiero bloquear](confirmar_bloqueo)
+      - [no, no bloquees la tarjeta](confirmar_bloqueo)
+      - [no, no procede](confirmar_bloqueo)
+      - [no, no está bien](confirmar_bloqueo)
+      - [no, no de acuerdo](confirmar_bloqueo)
+      - [no, no confirmo](confirmar_bloqueo)
+      - [no, no procede con el bloqueo](confirmar_bloqueo)
+      - [no, no bloquea la tarjeta](confirmar_bloqueo)
+      - [no, gracias](confirmar_bloqueo)
 
-# 2. Autenticación por RUT
-- intent: ingresar_rut
-  examples: |
-    - mi RUT es [123456789](rut)
-    - es [987654321](rut)
-    - [112223334](rut)
-    - [556667778](rut)
-    - mi RUT es [223334445](rut)
-    - RUT: [334445556](rut)
-
-# 6. Selección Bloqueo de Tarjeta
-- intent: bloquear_tarjeta
-  examples: |
-    - necesito bloquear mi tarjeta
-    - quiero bloquear mi tarjeta
-    - mi tarjeta fue robada
-    - perdí mi tarjeta
-    - bloquea mi tarjeta
-
-# 7. Selección de Tarjeta
-- intent: proporcionar_digitos
-  examples: |
-    - es la [1234](digitos)
-    - son los [5678](digitos)
-    - [9012](digitos)
-    - la tarjeta [3456](digitos)
-    - [7890](digitos)
-
-# 9. Confirmación de Bloqueo
-- intent: confirmar_bloqueo
-  examples: |
-    - sí
-    - correcto
-    - adelante
-    - procede
-    - confirmo
-
-# 9.1 Cancelación de Bloqueo
-- intent: cancelar_bloqueo
-  examples: |
-    - no
-    - cancelar
-    - detener
-    - espera
-    - no, cancela
-
-# Confirmar generación de ticket
-- intent: confirmar_generacion
-  examples: |
-    - procede con la generación
-    - sí, genera el ticket
-
-# Despedida
-- intent: despedida
-  examples: |
-    - adiós
-    - hasta luego
-    - chao
-    - gracias
+  - intent: confirmar_generacion
+    examples: |
+      - procede con la generación
+      - sí, genera el ticket
+      - adelante con el ticket
+      - genera el ticket
+      - sí, procede con la generación
+      
+  - intent: despedida
+    examples: |
+      - adiós
+      - hasta luego
+      - nos vemos
+      - chao
+      - hasta la vista
+      - que tengas un buen día
+      - gracias
+      - muchas gracias
+      - perfecto, gracias
+      - excelente, gracias
+      - está bien, gracias
