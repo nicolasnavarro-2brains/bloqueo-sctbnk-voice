@@ -217,52 +217,34 @@ class ActionGenerarTicket(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         
-        digitos = tracker.get_slot("digitos")
-        
         try:
-            # Generar ticket en Freshdesk con información completa
             case_number = self.crear_ticket_freshdesk(tracker)
-            
             if case_number:
                 dispatcher.utter_message(text=f"Excelente, se ha generado el caso número {case_number}. En instantes un ejecutivo realizará el bloqueo de tu tarjeta.")
                 return [
-                    SlotSet("ticket_number", case_number), 
+                    SlotSet("ticket_number", case_number),
                     SlotSet("ticket_created", True),
                     SlotSet("case_number", case_number),
                     SlotSet("card_blocked", True)
                 ]
-            else:
-                # Si falla la API real, generar case number simulado
-                logger.warning("API de Freshdesk falló, generando case number simulado")
-                from datetime import datetime
-                import uuid
-                simulated_case = f"BLK-{datetime.now().strftime('%Y%m%d')}-SIM-{str(uuid.uuid4())[:8]}"
-                dispatcher.utter_message(text=f"Excelente, se ha generado el caso número {simulated_case}. En instantes un ejecutivo realizará el bloqueo de tu tarjeta.")
-                return [
-                    SlotSet("ticket_number", simulated_case), 
-                    SlotSet("ticket_created", True),
-                    SlotSet("case_number", simulated_case),
-                    SlotSet("card_blocked", True)
-                ]
-                
+            # Fallo creando ticket real
+            dispatcher.utter_message(text="Lo siento, hubo un problema creando el ticket en soporte. Te transferiré con un ejecutivo humano para ayudarte inmediatamente.")
+            return [
+                SlotSet("ticket_created", False),
+                FollowupAction("action_fallback_to_human")
+            ]
         except Exception as e:
             logger.error(f"Error al generar ticket: {e}")
-            # En caso de error, generar case number simulado
-            from datetime import datetime
-            import uuid
-            simulated_case = f"BLK-{datetime.now().strftime('%Y%m%d')}-ERR-{str(uuid.uuid4())[:8]}"
-            dispatcher.utter_message(text=f"Excelente, se ha generado el caso número {simulated_case}. En instantes un ejecutivo realizará el bloqueo de tu tarjeta.")
+            dispatcher.utter_message(text="Estamos experimentando dificultades técnicas para crear el ticket. Te transferiré con un ejecutivo humano ahora mismo.")
             return [
-                SlotSet("ticket_number", simulated_case), 
-                SlotSet("ticket_created", True),
-                SlotSet("case_number", simulated_case),
-                SlotSet("card_blocked", True)
+                SlotSet("ticket_created", False),
+                FollowupAction("action_fallback_to_human")
             ]
     
     def crear_ticket_freshdesk(self, tracker: Tracker) -> str:
         """Crea un ticket en Freshdesk con información completa del cliente y tarjeta"""
-        API_KEY = os.getenv("API_KEY")
-        DOMAIN = os.getenv("DOMAIN", "pocsctbnk")
+        API_KEY = os.getenv("FRESHDESK_API_KEY") or os.getenv("API_KEY")
+        DOMAIN = os.getenv("FRESHDESK_DOMAIN") or os.getenv("DOMAIN") or "2brains-support"
         
         if not API_KEY:
             logger.error("API_KEY no configurada")
@@ -273,10 +255,18 @@ class ActionGenerarTicket(Action):
             'Content-Type': 'application/json'
         }
         
-        # Get customer information for ticket
-        customer_id = tracker.get_slot("customer_id") or "CLIENTE_DEFAULT"
-        customer_full_name = tracker.get_slot("customer_full_name") or "Cliente Scotiabank"
-        customer_phone = tracker.get_slot("customer_phone") or "N/A"
+        # Get customer information for ticket (desde slots o metadata del tracker)
+        # La metadata viene en el tracker, no como slot
+        metadata = {}
+        if hasattr(tracker, 'latest_message') and tracker.latest_message:
+            metadata = tracker.latest_message.get("metadata", {})
+        
+        customer_id = tracker.get_slot("customer_id") or metadata.get("customer_id") or "CLIENTE_DEFAULT"
+        customer_full_name = tracker.get_slot("customer_full_name") or metadata.get("customer_full_name") or "Cliente Scotiabank"
+        customer_phone = tracker.get_slot("customer_phone") or metadata.get("customer_phone") or None
+        
+        logger.info(f"🔍 Metadata encontrada: {metadata}")
+        logger.info(f"👤 Cliente: {customer_id}, {customer_full_name}, {customer_phone}")
         
         # Get card details for ticket
         digitos = tracker.get_slot("digitos") or "****"
@@ -295,12 +285,20 @@ class ActionGenerarTicket(Action):
             return rut
         
         ticket_data = {
-            "email": "cliente@ejemplo.com",
             "subject": f"Bloqueo de tarjeta confirmado - RUT {formatear_rut(customer_id)}",
-            "description": f"Tarjeta {card_name} ha sido bloqueada exitosamente en el sistema bancario para el cliente {customer_full_name} con RUT {formatear_rut(customer_id)}. Teléfono: {customer_phone}. Ticket de seguimiento para auditoría.",
-            "status": 2,  # 2 = Open
-            "priority": 1  # 1 = Low
+            "description": (
+                f"Tarjeta {card_name} bloqueada para {customer_full_name} (RUT {formatear_rut(customer_id)}). "
+                f"Teléfono: {customer_phone or 'N/D'}."
+            ),
+            "status": 2,
+            "priority": 1,
+            "name": customer_full_name  # Freshdesk requiere name cuando se proporciona phone
         }
+        # Freshdesk requiere email o phone. Si tenemos teléfono, úsalo; si no, usa un email genérico.
+        if customer_phone:
+            ticket_data["phone"] = customer_phone
+        else:
+            ticket_data["email"] = "cliente@ejemplo.com"
         
         try:
             # Usar autenticación correcta: auth=(API_KEY, 'X')
@@ -332,22 +330,12 @@ class ActionGenerarTicket(Action):
                 logger.info(f"Card blocking process completed successfully. Case number: {case_number}")
                 return case_number
             else:
-                logger.warning(f"Failed to create Freshdesk ticket. Status: {freshdesk_response.status_code}")
-                # Even if Freshdesk fails, generate a case number without Freshdesk
-                from datetime import datetime
-                import uuid
-                case_number = f"BLK-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())}"
-                logger.info(f"Generated fallback case number: {case_number}")
-                return case_number
+                logger.warning(f"Failed to create Freshdesk ticket. Status: {freshdesk_response.status_code} Body: {freshdesk_response.text}")
+                return None
                 
         except Exception as e:
             logger.error(f"Excepción al crear ticket: {e}")
-            # Generate a case number even if there's an exception
-            from datetime import datetime
-            import uuid
-            case_number = f"BLK-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())}"
-            logger.info(f"Generated exception fallback case number: {case_number}")
-            return case_number
+            return None
 
 class ActionConfirmarTicket(Action):
     """Acción para confirmar que el ticket fue creado"""
@@ -586,20 +574,6 @@ class ActionBloquearTarjeta(Action):
             dispatcher.utter_message(text="⚠️ No encontré la tarjeta para bloquear.")
         
         return []
-
-# Acción: generar ticket
-class ActionGenerarTicket(Action):
-    def name(self) -> str:
-        return "action_generar_ticket"
-
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[str, Any]) -> List[Dict[str, Any]]:
-        
-        ticket_number = random.randint(100000, 999999)
-        dispatcher.utter_message(text=f"🎟️ Se generó el ticket número {ticket_number}.")
-        
-        return [{"event": "slot", "name": "ticket_number", "value": str(ticket_number)}]
 
 # Acción: transferir a ejecutivo
 class ActionTransferirEjecutivo(Action):

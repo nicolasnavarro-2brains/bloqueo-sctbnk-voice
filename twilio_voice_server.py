@@ -115,12 +115,20 @@ phone_cache = {}  # call_sid -> phone
 rut_attempts_cache = {}  # call_sid -> número de intentos
 rut_max_attempts = 3
 autorizacion_cache = {}
+session_metadata_cache = {}  # call_sid -> dict con metadata para Rasa
 # -------------------------------
 # Rutas Flask
 # -------------------------------
 def delegar_a_rasa(session_id, user_message):
-    payload = {"sender": session_id, "message": user_message}
+    metadata = session_metadata_cache.get(session_id, {})
+    # Formato correcto para Rasa REST webhook
+    payload = {
+        "sender": session_id, 
+        "message": user_message,
+        "metadata": metadata
+    }
     try:
+        logger.info(f"📤 Enviando a Rasa: sender={session_id}, message='{user_message}', metadata={metadata}")
         r = requests.post(RASA_URL, json=payload)
         r.raise_for_status()
         return r.json()  # lista de mensajes [{"recipient_id":..., "text":...}, ...]
@@ -178,6 +186,14 @@ def incoming_call():
     saludo = f"¡Hola {customer['nombre']}! Soy el asistente de Scotiabank. Por favor, ingresa tu RUT sin puntos ni guion."
     responder_con_tts_twiml(response, saludo, call_sid, "greeting")
 
+    # Inicializar metadata de sesión para Rasa (se complementará tras validar RUT)
+    session_metadata_cache[call_sid] = {
+        "customer_phone": customer.get("telefono"),
+        "customer_first_name": customer.get("nombre"),
+        "customer_full_name": customer.get("nombre_completo"),
+        # customer_id lo fijamos tras validar RUT para asegurar consistencia
+    }
+
     gather = Gather(input="dtmf", num_digits=8, timeout=10,
                     action=f"/webhook/twilio/collect_rut?call_sid={call_sid}")
     response.append(gather)
@@ -233,8 +249,15 @@ def collect_rut():
     # ✅ Autenticación exitosa
     responder_con_tts_twiml(response, "Autenticación exitosa. Ahora puede decir su solicitud.", call_sid, "auth_success")
 
+    # Completar metadata de sesión para Rasa con el RUT validado
+    if customer:
+        session_metadata_cache[call_sid]["customer_id"] = customer.get("rut")
+        session_metadata_cache[call_sid]["customer_phone"] = customer.get("telefono")
+        session_metadata_cache[call_sid]["customer_full_name"] = customer.get("nombre_completo")
+        logger.info(f"✅ Metadata de sesión actualizada para Rasa: {session_metadata_cache[call_sid]}")
+
     # --- Inicio de sesión Rasa ---
-    # Notificar a Rasa que la llamada está autenticada
+    # Notificar a Rasa que la llamada está autenticada (incluye metadata)
     delegar_a_rasa(call_sid, "call_authenticated")
 
     # Solicitar al usuario que hable y capturar voz
