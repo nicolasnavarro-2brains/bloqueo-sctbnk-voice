@@ -170,3 +170,6 @@ endpoints_local.yml
 .env.production
 secrets.yml
 credentials.yml
+
+/audio/
+*.mp3
