@@ -33,8 +33,7 @@ flows:
       - collect: confirmar_bloqueo
         description: "confirmación del usuario para proceder con el bloqueo"
       - action: action_generar_ticket
-      - action: action_despedida_contextual  
-  
+      - action: action_despedida_contextual
   rut_validado:
     description: Validación de identidad y push
     steps:
@@ -56,7 +55,6 @@ flows:
       - collect: confirmar_bloqueo
       - action: action_bloquear_tarjeta
       - action: utter_bloqueo_exitoso
-
 
 
 
