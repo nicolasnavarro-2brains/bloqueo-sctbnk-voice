@@ -1,60 +1,47 @@
+version: "3.1"
+
 flows:
-  bloqueo_tarjeta:
-    description: "Ayudar a los usuarios a bloquear sus tarjetas de crédito/débito"
+  # Flujo principal de autenticación
+  autenticacion_completa:
+    description: "Flujo completo de autenticación desde llamada entrante"
     steps:
-      #- action: utter_ask_card_digits
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-
-  # Flujo para continuar conversación sin saludo
-  continuar_bloqueo:
-    description: "Continuar el proceso de bloqueo sin saludo repetitivo" 
-    steps:
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-
-  # Flujo para usuarios desconocidos (sin saludo inteligente)
-  bloqueo_tarjeta_usuario_desconocido:
-    description: "Ayudar a usuarios desconocidos a bloquear sus tarjetas sin saludo inteligente"
-    steps:
-      - collect: digitos
-        description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
-  rut_validado:
-    description: Validación de identidad y push
-    steps:
-      - action: utter_confirmar_identidad
-      - action: action_enviar_push
+      - action: action_saludo_inicial
+      - action: action_buscar_cliente_por_telefono
+      - action: action_solicitar_rut
+      - collect: rut
+        description: "el RUT del cliente para validación"
+      - action: action_validar_rut
+      - action: action_enviar_push_notificacion
       - collect: confirmar_autenticacion
-      - action: utter_autenticacion_exitosa
-      - action: utter_menu_principal
-      - collect: seleccionar_bloqueo
-      - action: utter_bloqueo_tarjeta
-      - action: utter_pedir_tarjeta
-      - collect: ingresar_tarjeta
-      - action: action_verificar_tarjeta
+        description: "confirmación de autenticación en app"
+      - action: action_menu_principal
+      - collect: seleccionar_servicio
+        description: "selección del servicio deseado"
+      - action: flow_bloqueo_tarjeta
 
-  tarjeta_validada:
-    description: Confirmación y ejecución de bloqueo
+  # Flujo de bloqueo de tarjeta (llamado desde autenticación)
+  bloqueo_tarjeta:
+    description: "Proceso de bloqueo de tarjeta"
     steps:
-      - action: utter_confirmar_bloqueo
+      - action: action_solicitar_digitos_tarjeta
+      - collect: digitos
+        description: "los últimos 4 dígitos de la tarjeta a bloquear"
+      - action: action_verificar_tarjeta
+      - action: action_tarjeta_no_encontrada
+      - collect: digitos
+        description: "dígitos correctos de la tarjeta (reintento)"
+      - action: action_verificar_tarjeta
+      - action: action_transferir_a_ejecutivo
       - collect: confirmar_bloqueo
-      - action: action_bloquear_tarjeta
-      - action: utter_bloqueo_exitoso
+        description: "confirmación del usuario para proceder con el bloqueo"
+      - action: action_generar_ticket
+      - action: action_despedida_contextual
 
-
-
+  # Flujo para continuar conversación sin autenticación
+  continuar_conversacion:
+    description: "Continuar conversación ya autenticada"
+    steps:
+      - action: action_menu_principal
+      - collect: seleccionar_servicio
+        description: "selección del servicio deseado"
+      - action: flow_bloqueo_tarjeta

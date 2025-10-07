@@ -587,3 +587,188 @@ class ActionTransferirEjecutivo(Action):
         dispatcher.utter_message(text="📞 Te estoy transfiriendo con un ejecutivo humano...")
         # Aquí deberías invocar Twilio <Dial> para transferir la llamada
         return []
+
+class ActionSaludoInicial(Action):
+    """Acción para saludo inicial en llamada"""
+    
+    def name(self) -> Text:
+        return "action_saludo_inicial"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="¡Buenos días! Soy el asistente de Scotiabank. Para brindarte el mejor servicio, necesito verificar tu identidad.")
+        return []
+
+class ActionBuscarClientePorTelefono(Action):
+    """Acción para buscar cliente por número de teléfono"""
+    
+    def name(self) -> Text:
+        return "action_buscar_cliente_por_telefono"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Obtener metadata del tracker (enviada desde Twilio)
+        metadata = {}
+        if hasattr(tracker, 'latest_message') and tracker.latest_message:
+            metadata = tracker.latest_message.get("metadata", {})
+        
+        customer_phone = metadata.get("customer_phone")
+        customer_full_name = metadata.get("customer_full_name")
+        customer_id = metadata.get("customer_id")
+        
+        if customer_phone and customer_full_name:
+            logger.info(f"Cliente encontrado: {customer_full_name} ({customer_phone})")
+            dispatcher.utter_message(text=f"Hola {customer_full_name.split()[0]}, veo que llamas desde {customer_phone}.")
+            return [
+                SlotSet("cliente_encontrado", True),
+                SlotSet("customer_phone", customer_phone),
+                SlotSet("customer_full_name", customer_full_name),
+                SlotSet("customer_id", customer_id)
+            ]
+        else:
+            logger.warning("Cliente no encontrado en metadata")
+            dispatcher.utter_message(text="No pude identificar tu número de teléfono en nuestro sistema.")
+            return [SlotSet("cliente_encontrado", False)]
+
+class ActionSolicitarRut(Action):
+    """Acción para solicitar RUT al cliente"""
+    
+    def name(self) -> Text:
+        return "action_solicitar_rut"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="Para continuar, necesito que me proporciones tu RUT sin puntos ni guión. Por ejemplo: 123456789.")
+        return []
+
+class ActionValidarRut(Action):
+    """Acción para validar RUT del cliente contra la base de datos"""
+    
+    def name(self) -> Text:
+        return "action_validar_rut"
+    
+    def validar_rut_en_db(self, rut: str, customer_id: str) -> bool:
+        """Valida RUT comparándolo con la base de datos"""
+        if not rut or not customer_id:
+            return False
+        
+        # Limpiar RUT
+        rut_clean = rut.replace(".", "").replace("-", "").upper()
+        
+        # Comparar con el customer_id de la base de datos
+        # En este caso, el customer_id ya viene de la metadata de Twilio
+        # que fue obtenido de la base de datos al buscar por teléfono
+        logger.info(f"Validando RUT {rut_clean} contra customer_id {customer_id}")
+        
+        # Simulación: en producción aquí se haría la consulta real a la base de datos
+        # Por ahora, asumimos que si el RUT coincide con el customer_id, es válido
+        return rut_clean == customer_id
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        rut = tracker.get_slot("rut")
+        customer_id = tracker.get_slot("customer_id")
+        
+        if not rut:
+            dispatcher.utter_message(text="No pude obtener tu RUT. ¿Podrías repetirlo?")
+            return [SlotSet("rut_valido", False)]
+        
+        if not customer_id:
+            dispatcher.utter_message(text="No pude obtener tu información de cliente. Te voy a conectar con un ejecutivo.")
+            return [SlotSet("rut_valido", False), FollowupAction("action_transferir_a_ejecutivo")]
+        
+        if self.validar_rut_en_db(rut, customer_id):
+            dispatcher.utter_message(text="RUT válido. Estamos enviando una notificación a tu app Scotiabank para confirmar tu identidad.")
+            return [SlotSet("rut_valido", True)]
+        else:
+            dispatcher.utter_message(text="El RUT ingresado no coincide con nuestros registros. Por favor, verifica e inténtalo nuevamente.")
+            return [SlotSet("rut_valido", False)]
+
+class ActionEnviarPushNotificacion(Action):
+    """Acción para enviar push notification"""
+    
+    def name(self) -> Text:
+        return "action_enviar_push_notificacion"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Aquí se integraría con el sistema de push notifications
+        logger.info("Enviando push notification para autenticación")
+        dispatcher.utter_message(text="Por favor, revisa tu app Scotiabank y confirma tu identidad.")
+        return []
+
+class ActionMenuPrincipal(Action):
+    """Acción para mostrar menú principal"""
+    
+    def name(self) -> Text:
+        return "action_menu_principal"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="¿En qué puedo ayudarte hoy? Puedes decir: 'bloquear tarjeta', 'consultar saldo' o 'otros servicios'.")
+        return []
+
+class ActionClienteNoEncontrado(Action):
+    """Acción para manejar cliente no encontrado"""
+    
+    def name(self) -> Text:
+        return "action_cliente_no_encontrado"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="No pude encontrar tu información en nuestro sistema. Te voy a conectar con un ejecutivo que te ayudará.")
+        return []
+
+class ActionRutInvalido(Action):
+    """Acción para manejar RUT inválido"""
+    
+    def name(self) -> Text:
+        return "action_rut_invalido"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="El RUT que ingresaste no coincide con nuestros registros. Por favor, verifica el número en tu cédula de identidad.")
+        return []
+
+class ActionSolicitarDigitosTarjeta(Action):
+    """Acción para solicitar dígitos de tarjeta"""
+    
+    def name(self) -> Text:
+        return "action_solicitar_digitos_tarjeta"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="Perfecto, te puedo ayudar con el bloqueo de tarjeta. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos.")
+        return []
+
+class ActionTarjetaNoEncontrada(Action):
+    """Acción para manejar tarjeta no encontrada"""
+    
+    def name(self) -> Text:
+        return "action_tarjeta_no_encontrada"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        digitos = tracker.get_slot("digitos") or "****"
+        dispatcher.utter_message(text=f"No encontré una tarjeta con los últimos 4 dígitos {digitos}. Por favor, verifica el número en tu tarjeta física y proporciona los dígitos correctos.")
+        return []

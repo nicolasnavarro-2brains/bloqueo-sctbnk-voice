@@ -1,34 +1,42 @@
 version: "3.1"
 
 rules:
-  - rule: Activar Flow de Bloqueo de Tarjeta
+  - rule: Activar flujo completo de autenticación
     steps:
-      - intent: quiero_bloquear_tarjeta
+      - intent: saludar
+      - action: flow_autenticacion_completa
+
+  - rule: Activar flujo de bloqueo de tarjeta
+    steps:
+      - intent: bloquear_tarjeta
       - action: flow_bloqueo_tarjeta
 
-  - rule: Manejar Confirmación de Bloqueo
+  - rule: Continuar conversación autenticada
+    steps:
+      - intent: confirmar_autenticacion
+      - action: flow_continuar_conversacion
+
+  - rule: Manejar confirmación de bloqueo
     steps:
       - intent: confirmar_bloqueo
-      - action: flow_continuar_bloqueo
-      
+      - action: action_generar_ticket
+
   - rule: Reintentar RUT hasta 3 veces
     condition:
       - slot_was_set:
           - rut_valido: false
     steps:
-      - action: utter_rut_invalido
-      - action: utter_pedir_rut
+      - action: action_rut_invalido
+      - action: action_solicitar_rut
 
   - rule: Cancelar llamada tras 3 intentos fallidos de RUT
     condition:
       - slot_was_set:
           - rut_intentos: 3
     steps:
-      - action: utter_despedida
-      - action: action_despedida_contextual
+      - action: action_transferir_a_ejecutivo
 
   - rule: Si push es rechazado o timeout
     steps:
       - intent: rechazar_autenticacion
-      - action: utter_autenticacion_fallida
       - action: action_transferir_a_ejecutivo

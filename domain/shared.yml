@@ -77,6 +77,10 @@ responses:
     - text: "¿Qué tipo de bloqueo deseas realizar? (1: tarjeta, 2: cuenta)"
   utter_ask_ingresar_tarjeta:
     - text: "Por favor, ingresa los últimos 4 dígitos de tu tarjeta."
+  utter_ask_rut:
+    - text: "Para continuar, necesito que me proporciones tu RUT sin puntos ni guión. Por ejemplo: 123456789."
+  utter_ask_seleccionar_servicio:
+    - text: "¿En qué puedo ayudarte hoy? Puedes decir: 'bloquear tarjeta', 'consultar saldo' o 'otros servicios'."
 
 # Configuración de entidades
 entities:
@@ -206,6 +210,24 @@ slots:
     type: text
     mappings:
       - type: from_text
+  cliente_encontrado:
+    type: bool
+    initial_value: false
+  rut_valido:
+    type: bool
+    initial_value: false
+  confirmar_autenticacion:
+    type: text
+    mappings:
+      - type: from_text
+  seleccionar_servicio:
+    type: text
+    mappings:
+      - type: from_text
+  servicio_seleccionado:
+    type: text
+    mappings:
+      - type: from_text
 
 # Configuración de intents
 intents:
@@ -226,6 +248,9 @@ intents:
   - rechazar_autenticacion
   - seleccionar_bloqueo
   - quiero_bloquear_tarjeta
+  - seleccionar_servicio
+  - consultar_saldo
+  - otros_servicios
 
 # Configuración de acciones
 actions:
@@ -253,3 +278,15 @@ actions:
   - action_enviar_push
   - action_bloquear_tarjeta  
   - action_verificar_rut
+  - action_saludo_inicial
+  - action_buscar_cliente_por_telefono
+  - action_solicitar_rut
+  - action_validar_rut
+  - action_enviar_push_notificacion
+  - action_menu_principal
+  - action_cliente_no_encontrado
+  - action_rut_invalido
+  - action_solicitar_digitos_tarjeta
+  - action_tarjeta_no_encontrada
+  - utter_ask_rut
+  - utter_ask_seleccionar_servicio
