@@ -11,26 +11,36 @@ session_config:
 
 # Configuración de respuestas
 responses:
+  # Respuestas para sobrescribir mensajes de Rasa por defecto
+  utter_ask_rephrase:
+    - text: ""
+  
+  utter_default:
+    - text: ""
+  
+  utter_please_rephrase:
+    - text: ""
+  
+  utter_out_of_scope:
+    - text: ""
+  
+  utter_restart:
+    - text: ""
+
   utter_greeting:
     - text: "¡Buenos días! Soy el asistente de Scotiabank, ¿en qué puedo ayudarte?"
 
-  utter_ask_card_digits:
-    - text: "Perfecto, te puedo ayudar con eso. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos."
-
   utter_ask_digitos:
-    - text: "Perfecto, te puedo ayudar con eso. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos."
+    - text: "Por favor, proporcione los últimos 4 dígitos de su tarjeta."
 
-  utter_confirm_blocking:
-    - text: "Entiendo, voy a generar un ticket para el bloqueo de tu tarjeta. ¿Te parece bien proceder?"
-
+  utter_ask_confirmacion_bloqueo:
+    - text: "Su tarjeta ha sido encontrada. ¿Desea continuar con el bloqueo?"
+  
   utter_ask_confirmar_bloqueo:
-    - text: "¿Confirmas que quieres proceder con el bloqueo de tu tarjeta?"
-
-  utter_collect_digitos:
-    - text: "Por favor, proporciona los últimos 4 dígitos de la tarjeta que quieres bloquear."
-
-  utter_collect_confirmar_bloqueo:
-    - text: "¿Confirmas que quieres proceder con el bloqueo de tu tarjeta?"
+    - text: ""
+ 
+  utter_tarjeta_invalida_reintentar:
+    - text: "No se pudo validar su tarjeta"
 
   utter_ticket_created:
     - text: "Excelente, se ha generado el ticket número {ticket_number}. En instantes un ejecutivo realizará el bloqueo de tu tarjeta."
@@ -46,6 +56,9 @@ responses:
 
   utter_transfer_cancelled:
     - text: "Tu solicitud de bloqueo ha sido cancelada."
+
+  utter_bloqueo_cancelado:
+    - text: "Entendido, no se realizará el bloqueo de tu tarjeta. ¿Hay algo más en lo que pueda ayudarte?"
 
   utter_bienvenida:
     - text: "Bienvenido a Scotiabank. Gracias por comunicarse con nosotros."
@@ -121,10 +134,14 @@ slots:
     mappings:
       - type: controlled
   confirmar_bloqueo:
-    type: text
+    type: bool
     mappings:
-      - type: from_entity
-        entity: confirmar_bloqueo
+      - type: from_intent
+        intent: confirmar_bloqueo
+        value: true
+      - type: from_intent
+        intent: negar_bloqueo
+        value: false
   ticket_created:
     type: bool
     mappings:
@@ -190,6 +207,11 @@ slots:
     initial_value: pending
   tarjeta_valida:
     type: bool
+    mappings:
+      - type: controlled
+  tarjeta_intentos:
+    type: text
+    initial_value: 0
   confirm_block:
     type: bool
   rut_valido:
@@ -213,13 +235,6 @@ slots:
   cliente_encontrado:
     type: bool
     initial_value: false
-  rut_valido:
-    type: bool
-    initial_value: false
-  confirmar_autenticacion:
-    type: text
-    mappings:
-      - type: from_text
   seleccionar_servicio:
     type: text
     mappings:
@@ -235,6 +250,7 @@ intents:
   - bloquear_tarjeta
   - proporcionar_digitos
   - confirmar_bloqueo
+  - negar_bloqueo
   - confirmar_generacion
   - despedida
   - negar
@@ -272,8 +288,11 @@ actions:
   - action_solicitar_digitos
   - action_verificar_tarjeta
   - action_confirmar_bloqueo
+  - action_procesar_confirmacion
+  - action_preguntar_confirmacion
   - action_generar_ticket
   - action_despedida_contextual
+  - action_bloqueo_cancelado
   - action_transferir_a_ejecutivo
   - action_enviar_push
   - action_bloquear_tarjeta  

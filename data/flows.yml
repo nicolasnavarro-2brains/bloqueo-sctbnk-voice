@@ -1,47 +1,47 @@
 version: "3.1"
 
 flows:
-  # Flujo principal de autenticación
-  autenticacion_completa:
-    description: "Flujo completo de autenticación desde llamada entrante"
-    steps:
-      - action: action_saludo_inicial
-      - action: action_buscar_cliente_por_telefono
-      - action: action_solicitar_rut
-      - collect: rut
-        description: "el RUT del cliente para validación"
-      - action: action_validar_rut
-      - action: action_enviar_push_notificacion
-      - collect: confirmar_autenticacion
-        description: "confirmación de autenticación en app"
-      - action: action_menu_principal
-      - collect: seleccionar_servicio
-        description: "selección del servicio deseado"
-      - action: flow_bloqueo_tarjeta
-
-  # Flujo de bloqueo de tarjeta (llamado desde autenticación)
   bloqueo_tarjeta:
-    description: "Proceso de bloqueo de tarjeta"
+    description: "Flujo para bloquear tarjeta del cliente"
     steps:
-      - action: action_solicitar_digitos_tarjeta
-      - collect: digitos
+      - id: recolectar_digitos
+        collect: digitos
         description: "los últimos 4 dígitos de la tarjeta a bloquear"
-      - action: action_verificar_tarjeta
-      - action: action_tarjeta_no_encontrada
-      - collect: digitos
-        description: "dígitos correctos de la tarjeta (reintento)"
-      - action: action_verificar_tarjeta
-      - action: action_transferir_a_ejecutivo
-      - collect: confirmar_bloqueo
-        description: "confirmación del usuario para proceder con el bloqueo"
-      - action: action_generar_ticket
-      - action: action_despedida_contextual
+        next: verificar_tarjeta
 
-  # Flujo para continuar conversación sin autenticación
-  continuar_conversacion:
-    description: "Continuar conversación ya autenticada"
-    steps:
-      - action: action_menu_principal
-      - collect: seleccionar_servicio
-        description: "selección del servicio deseado"
-      - action: flow_bloqueo_tarjeta
+      - id: verificar_tarjeta
+        action: action_verificar_tarjeta
+        next:
+          - if: slots.tarjeta_valida == true
+            then: tarjeta_valida
+          - else: tarjeta_invalida
+
+      - id: tarjeta_invalida
+        action: utter_tarjeta_invalida_reintentar
+        next: limpiar_digitos
+      
+      - id: limpiar_digitos
+        set_slots:
+          - digitos: null
+        next: recolectar_digitos
+
+      - id: tarjeta_valida
+        action: action_preguntar_confirmacion
+        next: esperar_confirmacion
+      
+      - id: esperar_confirmacion
+        collect: confirmar_bloqueo
+        next:
+          - if: slots.confirmar_bloqueo == true
+            then: generar_ticket
+          - else: cancelar_bloqueo
+      
+      - id: generar_ticket
+        action: action_generar_ticket
+        next: despedida
+      
+      - id: despedida
+        action: action_despedida_contextual
+      
+      - id: cancelar_bloqueo
+        action: action_bloqueo_cancelado

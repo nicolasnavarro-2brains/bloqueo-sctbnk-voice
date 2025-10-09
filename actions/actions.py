@@ -159,39 +159,6 @@ class ActionSolicitarDigitos(Action):
         dispatcher.utter_message(text=message)
         return []
 
-class ActionVerificarTarjeta(Action):
-    """Acción para verificar la tarjeta en la base de datos"""
-    
-    def name(self) -> Text:
-        return "action_verificar_tarjeta"
-    
-    def verificar_tarjeta_en_db(self, digitos: str) -> bool:
-        """Simula la verificación de tarjeta en base de datos"""
-        # En producción, aquí se haría la consulta real a PostgreSQL/MongoDB
-        logger.info(f"Verificando tarjeta con dígitos: {digitos}")
-        
-        # Simulación: aceptar cualquier 4 dígitos para testing
-        return len(digitos) == 4 and digitos.isdigit()
-    
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        
-        # Obtener los dígitos del slot
-        digitos = tracker.get_slot("digitos")
-        
-        if not digitos:
-            dispatcher.utter_message(text="No pude obtener los dígitos de la tarjeta. ¿Podrías repetirlos?")
-            return [FollowupAction("action_solicitar_digitos")]
-        
-        # Simular verificación en base de datos
-        # En producción, aquí se haría la consulta real
-        if self.verificar_tarjeta_en_db(digitos):
-            dispatcher.utter_message(text=f"Perfecto, encontré tu tarjeta terminada en {digitos}. Ahora voy a generar un ticket para el bloqueo. ¿Te parece bien proceder?")
-            return [SlotSet("tarjeta_encontrada", True)]
-        else:
-            dispatcher.utter_message(text="No encontré una tarjeta con esos últimos 4 dígitos. ¿Podrías verificar y proporcionarme los dígitos correctos?")
-            return [SlotSet("tarjeta_encontrada", False)]
 
 class ActionConfirmarBloqueo(Action):
     """Acción para confirmar el bloqueo de la tarjeta"""
@@ -377,8 +344,38 @@ class ActionDespedidaContextual(Action):
         
         dispatcher.utter_message(text=goodbye)
         
-        # Hacer que el bot espere silenciosamente sin mensajes adicionales
-        return [FollowupAction("action_listen")]
+        from rasa_sdk.events import ConversationPaused
+        return [ConversationPaused()]
+
+class ActionPreguntarConfirmacion(Action):
+    """Acción para preguntar si desea confirmar el bloqueo sin mostrar mensaje adicional"""
+    
+    def name(self) -> Text:
+        return "action_preguntar_confirmacion"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="Su tarjeta ha sido encontrada. ¿Desea continuar con el bloqueo?")
+        
+        # No retornar nada, dejar que el flow continue
+        return []
+
+class ActionBloqueoCancelado(Action):
+    """Acción para cuando el usuario cancela el bloqueo"""
+    
+    def name(self) -> Text:
+        return "action_bloqueo_cancelado"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        dispatcher.utter_message(text="Entendido, no se realizará el bloqueo de tu tarjeta. Gracias por contactarte con nosotros.")
+        
+        from rasa_sdk.events import ConversationPaused
+        return [ConversationPaused()]
 
 class ActionFallbackToHuman(Action):
     """Acción para conectar con un ejecutivo humano"""
@@ -483,15 +480,83 @@ class ActionVerificarTarjeta(Action):
         return "action_verificar_tarjeta"
 
     def run(self, dispatcher, tracker, domain):
-        digits = tracker.latest_message.get("text").replace("TARJETA:", "")
-        logger.info(f"💳 Verificando tarjeta {digits}")
+        # Obtener los dígitos del slot o del mensaje
+        digits = tracker.get_slot("digitos")
+        if not digits:
+            # Intentar extraer del mensaje si no está en el slot
+            message_text = tracker.latest_message.get("text", "")
+            # Eliminar espacios y buscar exactamente 4 dígitos
+            import re
+            message_text_no_spaces = message_text.replace(" ", "").replace("-", "")
+            digit_match = re.search(r'^(\d{4})$', message_text_no_spaces)
+            if digit_match:
+                digits = digit_match.group(1)
+        
+        # Obtener intentos actuales
+        intentos = int(tracker.get_slot("tarjeta_intentos") or 0)
+        
+        logger.info(f"💳 Verificando tarjeta con dígitos: {digits} (intento {intentos + 1})")
 
-        tarjetas_validas = ["1234", "5678"]
+        if not digits or len(digits) != 4 or not digits.isdigit():
+            # No mostrar mensaje, el flow lo manejará
+            return [SlotSet("tarjeta_valida", False)]
+
+        # Lista de tarjetas válidas para testing
+        tarjetas_validas = ["1234", "5678", "9999", "0000"]
+        
         if digits in tarjetas_validas:
-            return [SlotSet("selected_card", digits)]
+            logger.info(f"✅ Tarjeta válida encontrada: {digits}")
+            return [
+                SlotSet("selected_card", digits),
+                SlotSet("tarjeta_valida", True),
+                SlotSet("tarjeta_encontrada", True),
+                SlotSet("tarjeta_intentos", 0)  # Resetear intentos
+            ]
         else:
-            dispatcher.utter_message("La tarjeta ingresada no es válida.")
-            return []
+            intentos += 1
+            logger.info(f"❌ Tarjeta inválida: {digits} (intento {intentos})")
+            
+            if intentos >= 2:
+                dispatcher.utter_message("No se pudo validar su tarjeta después de 2 intentos. Te voy a conectar con un ejecutivo que te ayudará personalmente.")
+                return [
+                    SlotSet("tarjeta_valida", False),
+                    SlotSet("tarjeta_encontrada", False),
+                    SlotSet("tarjeta_intentos", intentos),
+                    FollowupAction("action_transferir_a_ejecutivo")
+                ]
+            else:
+                # NO limpiar slot aquí, el flow lo manejará
+                return [
+                    SlotSet("tarjeta_valida", False),
+                    SlotSet("tarjeta_encontrada", False),
+                    SlotSet("tarjeta_intentos", intentos)
+                ]
+
+class ActionProcesarConfirmacion(Action):
+    """Procesa la confirmación del usuario para bloquear la tarjeta"""
+    
+    def name(self) -> Text:
+        return "action_procesar_confirmacion"
+    
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Obtener el último intent del usuario
+        last_intent = tracker.latest_message.get("intent", {}).get("name", "")
+        
+        logger.info(f"💬 Intent recibido: {last_intent}")
+        
+        if last_intent == "confirmar_bloqueo":
+            # Usuario confirmó el bloqueo
+            return [SlotSet("confirmar_bloqueo", True)]
+        elif last_intent == "negar_bloqueo":
+            # Usuario canceló el bloqueo
+            return [SlotSet("confirmar_bloqueo", False)]
+        else:
+            # No se reconoció la respuesta, pedir clarificación
+            dispatcher.utter_message("No entendí tu respuesta. Por favor, confirma con 'sí' o 'no'. ¿Deseas continuar con el bloqueo?")
+            return [SlotSet("confirmar_bloqueo", None)]
 
 class ActionBloquearTarjeta(Action):
     def name(self) -> Text:
@@ -586,7 +651,8 @@ class ActionTransferirEjecutivo(Action):
         
         dispatcher.utter_message(text="📞 Te estoy transfiriendo con un ejecutivo humano...")
         # Aquí deberías invocar Twilio <Dial> para transferir la llamada
-        return []
+        from rasa_sdk.events import ConversationPaused
+        return [ConversationPaused()]
 
 class ActionSaludoInicial(Action):
     """Acción para saludo inicial en llamada"""
@@ -746,18 +812,6 @@ class ActionRutInvalido(Action):
         dispatcher.utter_message(text="El RUT que ingresaste no coincide con nuestros registros. Por favor, verifica el número en tu cédula de identidad.")
         return []
 
-class ActionSolicitarDigitosTarjeta(Action):
-    """Acción para solicitar dígitos de tarjeta"""
-    
-    def name(self) -> Text:
-        return "action_solicitar_digitos_tarjeta"
-    
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        
-        dispatcher.utter_message(text="Perfecto, te puedo ayudar con el bloqueo de tarjeta. Dime, ¿qué tarjeta es la que necesitas bloquear? Puedes darme los últimos 4 dígitos.")
-        return []
 
 class ActionTarjetaNoEncontrada(Action):
     """Acción para manejar tarjeta no encontrada"""

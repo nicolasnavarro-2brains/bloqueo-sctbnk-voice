@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
-ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID", "iNlaSRLu8vd4RtnF3w9i")
+ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID")
 RASA_URL = os.getenv("RASA_URL", "http://localhost:5005/webhooks/rest/webhook")
-BASE_URL = os.getenv("BASE_URL", "https://8e85dbebd1ae.ngrok-free.app")  # ngrok pública
+BASE_URL = os.getenv("BASE_URL", " https://d167b76ea8b7.ngrok-free.app")  # ngrok pública
 
 # Carpeta para audios
 AUDIO_FOLDER = os.path.join(os.getcwd(), "audio")

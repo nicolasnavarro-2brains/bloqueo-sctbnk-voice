@@ -2,6 +2,17 @@ version: "3.1"
 
 nlu:
 # 1.Bienvenida
+  - intent: saludar
+    examples: |
+      - hola
+      - buenos días
+      - buenas tardes
+      - buenas noches
+      - saludos
+      - hey
+      - hi
+      - hello
+
   - intent: quiero_bloquear_tarjeta
     examples: |
       - hola, quiero bloquear mi tarjeta
@@ -81,41 +92,55 @@ nlu:
 #9. Ejecución y Cierre confirma
   - intent: confirmar_bloqueo
     examples: |
-      - [sí](confirmar_bloqueo)
-      - [correcto](confirmar_bloqueo)
-      - [perfecto](confirmar_bloqueo)
-      - [adelante](confirmar_bloqueo)
-      - [procede](confirmar_bloqueo)
-      - [sí, procede](confirmar_bloqueo)
-      - [está bien](confirmar_bloqueo)
-      - [de acuerdo](confirmar_bloqueo)
-      - [confirmo](confirmar_bloqueo)
-      - [procede con el bloqueo](confirmar_bloqueo)
-      - [sí, bloquea la tarjeta](confirmar_bloqueo)
-      - [claro](confirmar_bloqueo)
-      - [por favor](confirmar_bloqueo)
-      - [si](confirmar_bloqueo)
-      - [ok](confirmar_bloqueo)
-      - [vale](confirmar_bloqueo)
-      - [excelente](confirmar_bloqueo)
-      - [bueno](confirmar_bloqueo)
-      - [bien](confirmar_bloqueo)
-      - [por supuesto](confirmar_bloqueo)
-      - [naturalmente](confirmar_bloqueo)
-      - [desde luego](confirmar_bloqueo)
-      - [por cierto](confirmar_bloqueo)
-      - [efectivamente](confirmar_bloqueo)
-      - [indudablemente](confirmar_bloqueo)
-      - [sin duda](confirmar_bloqueo)
-      - [claro que sí](confirmar_bloqueo)
-      - [por supuesto que sí](confirmar_bloqueo)
-      - [desde luego que sí](confirmar_bloqueo)
-#9.1 Ejecución y Cierre cancelar
-  - intent: cancelar_bloqueo
+      - sí
+      - si
+      - correcto
+      - perfecto
+      - adelante
+      - procede
+      - sí, procede
+      - está bien
+      - de acuerdo
+      - confirmo
+      - procede con el bloqueo
+      - sí, bloquea la tarjeta
+      - claro
+      - por favor
+      - ok
+      - vale
+      - excelente
+      - bueno
+      - bien
+      - por supuesto
+      - naturalmente
+      - desde luego
+      - afirmativo
+      - confirmar
+      - sí quiero
+      - quiero bloquearlo
+
+  - intent: negar_bloqueo
     examples: |
-      - [no](confirmar_bloqueo)
-      - [cancelar](confirmar_bloqueo)
-      - [detener](confirmar_bloqueo)
+      - no
+      - no quiero
+      - no, gracias
+      - mejor no
+      - cancelar
+      - no procede
+      - no bloquear
+      - no deseo
+      - negativo
+      - no continuar
+      - no quiero bloquear
+      - detener
+      - parar
+      - no sigo
+      - no lo hagas
+      - no lo bloquees
+      - no realizar el bloqueo
+      - cancela
+      - cancela el bloqueo
+      - no lo haga
       - [espera](confirmar_bloqueo)
       - [alto](confirmar_bloqueo)
       - [no, espera](confirmar_bloqueo)
