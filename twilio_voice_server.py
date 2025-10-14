@@ -137,13 +137,14 @@ def texto_a_voz(texto, filename, call_sid, velocidad="1.0"):
             logger.error("Error ElevenLabs: %s", response.text)
             return None
         
-        output_file = os.path.join(AUDIO_FOLDER, f"{filename}.mp3")
-        with open(output_file, "wb") as f:
-            f.write(response.content)
+        # Guardar audio en MEMORIA (no en disco)
+        audio_bytes = response.content
+        audio_filename = f"{filename}.mp3"
+        audio_cache[audio_filename] = audio_bytes
         
-        file_size = os.path.getsize(output_file)
-        logger.info(f"Audio generado ({voice_type}): {output_file} ({file_size} bytes)")
-        return f"/audio/{filename}.mp3"
+        file_size = len(audio_bytes)
+        logger.info(f"[MEMORIA] Audio generado ({voice_type}): {audio_filename} ({file_size} bytes)")
+        return f"/audio/{audio_filename}"
     except Exception as e:
         logger.error(f"Error generando audio: {e}")
         return None
@@ -172,6 +173,7 @@ rut_max_attempts = 3
 autorizacion_cache = {}
 session_metadata_cache = {}  # call_sid -> dict con metadata para Rasa
 voice_assignment_cache = {}  # call_sid -> voice_id asignado (para consistencia en la conversación)
+audio_cache = {}  # filename -> audio bytes (almacena audio en memoria sin guardar archivos)
 # -------------------------------
 # Rutas Flask
 # -------------------------------
@@ -217,19 +219,43 @@ def verificar_rut_en_bd(rut: str):
         if conn:
             conn.close()
 
+def limpiar_cache_de_llamada(call_sid):
+    """
+    Limpia todos los datos en caché relacionados con una llamada específica.
+    Incluye: audio, metadata, RUT attempts, autorización, voz asignada, teléfono.
+    """
+    # Limpiar archivos de audio de esta llamada
+    keys_to_delete = [key for key in audio_cache.keys() if call_sid in key]
+    for key in keys_to_delete:
+        del audio_cache[key]
+        logger.info(f"[MEMORIA] Audio eliminado del caché: {key}")
+    
+    # Limpiar otros datos de la sesión
+    phone_cache.pop(call_sid, None)
+    rut_attempts_cache.pop(call_sid, None)
+    autorizacion_cache.pop(call_sid, None)
+    session_metadata_cache.pop(call_sid, None)
+    voice_assignment_cache.pop(call_sid, None)
+    
+    logger.info(f"[LIMPIEZA] Caché completo limpiado para {call_sid}")
+
 @app.route("/audio/<filename>")
 def serve_audio(filename):
-    """Sirve archivos de audio generados para Twilio"""
-    logger.info(f"Solicitud de audio: /audio/{filename}")
-    audio_path = os.path.join(AUDIO_FOLDER, filename)
+    """Sirve audio desde memoria (sin archivos en disco)"""
+    logger.info(f"[MEMORIA] Solicitud de audio: /audio/{filename}")
     
-    if not os.path.exists(audio_path):
-        logger.error(f"Archivo no encontrado: {audio_path}")
+    # Buscar audio en memoria
+    if filename not in audio_cache:
+        logger.error(f"[MEMORIA] Audio no encontrado en caché: {filename}")
         return "Audio file not found", 404
     
-    file_size = os.path.getsize(audio_path)
-    logger.info(f"Sirviendo audio: {audio_path} ({file_size} bytes)")
-    return send_from_directory(AUDIO_FOLDER, filename, mimetype="audio/mpeg")
+    audio_bytes = audio_cache[filename]
+    file_size = len(audio_bytes)
+    logger.info(f"[MEMORIA] Sirviendo audio: {filename} ({file_size} bytes)")
+    
+    # Servir audio directamente desde memoria
+    from flask import Response as FlaskResponse
+    return FlaskResponse(audio_bytes, mimetype="audio/mpeg")
 
 @app.route("/webhook/twilio/voice", methods=["POST"])
 def incoming_call():
@@ -390,6 +416,23 @@ def rasa_conversation():
         response.hangup()
 
     return Response(str(response), mimetype="text/xml")
+
+@app.route("/webhook/twilio/status", methods=["POST"])
+def call_status():
+    """
+    Webhook para recibir notificaciones de estado de llamada de Twilio.
+    Limpia el caché cuando la llamada termina.
+    """
+    call_sid = request.form.get("CallSid")
+    call_status = request.form.get("CallStatus")
+    
+    logger.info(f"[STATUS] Llamada {call_sid}: {call_status}")
+    
+    # Limpiar caché cuando la llamada termina
+    if call_status in ["completed", "busy", "no-answer", "failed", "canceled"]:
+        limpiar_cache_de_llamada(call_sid)
+    
+    return Response("OK", mimetype="text/plain")
 
 # -------------------------------
 # Main
