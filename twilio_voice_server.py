@@ -342,24 +342,30 @@ def collect_rut():
 def rasa_conversation():
     call_sid = request.args.get("call_sid")
     speech_text = request.form.get("SpeechResult", "").strip()
+    dtmf_digits = request.form.get("Digits", "").strip()
     response = VoiceResponse()
+    
+    # Priorizar voz, pero aceptar DTMF también
+    user_input = speech_text if speech_text else dtmf_digits
 
-    logger.info(f"Usuario dijo: {speech_text}")
+    logger.info(f"[INPUT] Usuario {'dijo' if speech_text else 'teclado'}: {user_input}")
 
-    if not speech_text:
+    if not user_input:
         # Reintentar si no entendió
         gather = Gather(
-            input="speech",
+            input="speech dtmf",
             action=f"/webhook/twilio/rasa_conversation?call_sid={call_sid}",
             speech_timeout="auto",
-            language="es-CL"
+            language="es-CL",
+            num_digits=4,
+            timeout=10
         )
         gather.say("No entendí lo que dijo. Por favor, repita.")
         response.append(gather)
         return Response(str(response), mimetype="text/xml")
 
     # Enviar texto a Rasa
-    rasa_respuestas = delegar_a_rasa(call_sid, speech_text)
+    rasa_respuestas = delegar_a_rasa(call_sid, user_input)
 
     if rasa_respuestas:
         for idx, msg in enumerate(rasa_respuestas):
@@ -368,10 +374,12 @@ def rasa_conversation():
                 responder_con_tts_twiml(response, texto, call_sid, f"rasa_{idx}")
                 # Continuar escuchando si quieres diálogo abierto
         gather = Gather(
-            input="speech",
+            input="speech dtmf",
             action=f"/webhook/twilio/rasa_conversation?call_sid={call_sid}",
             speech_timeout="auto",
-            language="es-CL"
+            language="es-CL",
+            num_digits=4,
+            timeout=10
         )
         #gather.say("")
         response.append(gather)

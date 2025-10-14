@@ -348,7 +348,7 @@ class ActionDespedidaContextual(Action):
         return [ConversationPaused()]
 
 class ActionPreguntarConfirmacion(Action):
-    """Acción para preguntar si desea confirmar el bloqueo sin mostrar mensaje adicional"""
+    """Acción para preguntar si desea confirmar el bloqueo, mencionando los 4 dígitos"""
     
     def name(self) -> Text:
         return "action_preguntar_confirmacion"
@@ -357,9 +357,19 @@ class ActionPreguntarConfirmacion(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         
-        dispatcher.utter_message(text="Su tarjeta ha sido encontrada. ¿Desea continuar con el bloqueo?")
+        # Obtener los dígitos de la tarjeta del slot
+        digitos = tracker.get_slot("digitos")
         
-        # No retornar nada, dejar que el flow continue
+        if digitos:
+            # Decir los dígitos separados para mayor claridad
+            digitos_separados = " ".join(digitos)
+            mensaje = f"Perfecto, encontré tu tarjeta terminada en {digitos_separados}. ¿Deseas continuar con el bloqueo?"
+        else:
+            # Fallback si no hay dígitos (no debería pasar)
+            mensaje = "Su tarjeta ha sido encontrada. ¿Desea continuar con el bloqueo?"
+        
+        dispatcher.utter_message(text=mensaje)
+        
         return []
 
 class ActionBloqueoCancelado(Action):
@@ -478,6 +488,25 @@ class ActionVerificarRUT(Action):
 class ActionVerificarTarjeta(Action):
     def name(self) -> Text:
         return "action_verificar_tarjeta"
+    
+    def convertir_palabras_a_numeros(self, texto):
+        """Convierte palabras numéricas en español a dígitos"""
+        palabras_a_digitos = {
+            "cero": "0", "uno": "1", "dos": "2", "tres": "3", "cuatro": "4",
+            "cinco": "5", "seis": "6", "siete": "7", "ocho": "8", "nueve": "9",
+            "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
+            "5": "5", "6": "6", "7": "7", "8": "8", "9": "9"
+        }
+        
+        # Separar por espacios y convertir cada palabra
+        palabras = texto.lower().split()
+        digitos = []
+        for palabra in palabras:
+            palabra_limpia = palabra.strip()
+            if palabra_limpia in palabras_a_digitos:
+                digitos.append(palabras_a_digitos[palabra_limpia])
+        
+        return "".join(digitos) if len(digitos) == 4 else None
 
     def run(self, dispatcher, tracker, domain):
         # Obtener los dígitos del slot o del mensaje
@@ -485,17 +514,21 @@ class ActionVerificarTarjeta(Action):
         if not digits:
             # Intentar extraer del mensaje si no está en el slot
             message_text = tracker.latest_message.get("text", "")
-            # Eliminar espacios y buscar exactamente 4 dígitos
-            import re
+            logger.info(f"Mensaje recibido para verificación: '{message_text}'")
+            
+            # Primero intentar buscar 4 dígitos seguidos
             message_text_no_spaces = message_text.replace(" ", "").replace("-", "")
-            digit_match = re.search(r'^(\d{4})$', message_text_no_spaces)
+            digit_match = re.search(r'(\d{4})', message_text_no_spaces)
             if digit_match:
                 digits = digit_match.group(1)
+            else:
+                # Intentar convertir palabras a números (por si se dictó por voz)
+                digits = self.convertir_palabras_a_numeros(message_text)
         
         # Obtener intentos actuales
         intentos = int(tracker.get_slot("tarjeta_intentos") or 0)
         
-        logger.info(f"💳 Verificando tarjeta con dígitos: {digits} (intento {intentos + 1})")
+        logger.info(f"Verificando tarjeta con dígitos: {digits} (intento {intentos + 1})")
 
         if not digits or len(digits) != 4 or not digits.isdigit():
             # No mostrar mensaje, el flow lo manejará
