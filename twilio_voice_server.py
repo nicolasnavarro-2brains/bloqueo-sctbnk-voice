@@ -3,6 +3,7 @@ import os
 import logging
 import re
 import uuid
+import random
 from datetime import datetime
 from flask import Flask, request, Response, send_from_directory
 from twilio.twiml.voice_response import VoiceResponse, Gather
@@ -17,8 +18,9 @@ load_dotenv()
 
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
 ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID")
+ELEVEN_VOICE_ID2 = os.getenv("ELEVEN_VOICE_ID2")
 RASA_URL = os.getenv("RASA_URL", "http://localhost:5005/webhooks/rest/webhook")
-BASE_URL = os.getenv("BASE_URL", " https://d167b76ea8b7.ngrok-free.app")  # ngrok pública
+BASE_URL = os.getenv("BASE_URL", "https://df4a6fec2ac0.ngrok-free.app")  # ngrok pública (sin espacio al final)
 
 # Carpeta para audios
 AUDIO_FOLDER = os.path.join(os.getcwd(), "audio")
@@ -47,7 +49,7 @@ def get_database_connection():
     try:
         return pymysql.connect(**DB_CONFIG)
     except Exception as e:
-        logger.error(f"❌ Error conectando a la base de datos: {e}")
+        logger.error(f"Error conectando a la base de datos: {e}")
         return None
 
 def get_customer_by_phone(phone_number: str):
@@ -70,10 +72,10 @@ def get_customer_by_phone(phone_number: str):
             cursor.execute(sql, tuple(norm_candidates))
             customer = cursor.fetchone()
             if customer:
-                logger.info(f"👤 Cliente encontrado: {customer['nombre_completo']} ({customer['telefono']})")
+                logger.info(f"Cliente encontrado: {customer['nombre_completo']} ({customer['telefono']})")
             return customer
     except Exception as e:
-        logger.error(f"❌ Error consultando DB: {e}")
+        logger.error(f"Error consultando DB: {e}")
         return None
     finally:
         if conn:
@@ -82,8 +84,44 @@ def get_customer_by_phone(phone_number: str):
 # -------------------------------
 # ElevenLabs TTS
 # -------------------------------
-def texto_a_voz(texto, filename, velocidad="x-fast"):
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVEN_VOICE_ID}"
+def seleccionar_voz_para_sesion(call_sid):
+    """
+    Selecciona aleatoriamente una voz para la sesión si no existe.
+    Mantiene la misma voz durante toda la conversación.
+    """
+    if call_sid not in voice_assignment_cache:
+        # Verificar que ambas voces estén configuradas
+        voces_disponibles = []
+        if ELEVEN_VOICE_ID:
+            voces_disponibles.append((ELEVEN_VOICE_ID, "femenina"))
+        if ELEVEN_VOICE_ID2:
+            voces_disponibles.append((ELEVEN_VOICE_ID2, "masculina"))
+        
+        if not voces_disponibles:
+            logger.error("No hay voces configuradas")
+            return None, None
+        
+        # Seleccionar aleatoriamente
+        voice_id, voice_type = random.choice(voces_disponibles)
+        voice_assignment_cache[call_sid] = (voice_id, voice_type)
+        logger.info(f"Voz asignada para {call_sid}: {voice_type} ({voice_id[:8]}...)")
+    
+    return voice_assignment_cache[call_sid]
+
+def texto_a_voz(texto, filename, call_sid, velocidad="1.0"):
+    """
+    Convierte texto a voz usando ElevenLabs.
+    Usa la voz asignada para esta sesión (call_sid).
+    """
+    # Obtener voz asignada para esta sesión
+    voice_info = seleccionar_voz_para_sesion(call_sid)
+    if not voice_info:
+        logger.error("No se pudo obtener voz para la sesión")
+        return None
+    
+    voice_id, voice_type = voice_info
+    
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
         "xi-api-key": ELEVEN_API_KEY,
         "Accept": "audio/mpeg",
@@ -91,22 +129,39 @@ def texto_a_voz(texto, filename, velocidad="x-fast"):
     }
     ssml_texto = f"<speak><prosody rate='{velocidad}'>{texto}</prosody></speak>"
     data = {"text": ssml_texto, "model_id": "eleven_multilingual_v2",
-            "voice_settings":{"stability":0.8,"similarity_boost":0.95}}
-    response = requests.post(url, headers=headers, json=data)
-    if "audio" not in response.headers.get("Content-Type", ""):
-        logger.error("❌ Error ElevenLabs: %s", response.text)
+            "voice_settings":{"stability":0.5,"similarity_boost":0.95}}
+    
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        if "audio" not in response.headers.get("Content-Type", ""):
+            logger.error("Error ElevenLabs: %s", response.text)
+            return None
+        
+        output_file = os.path.join(AUDIO_FOLDER, f"{filename}.mp3")
+        with open(output_file, "wb") as f:
+            f.write(response.content)
+        
+        file_size = os.path.getsize(output_file)
+        logger.info(f"Audio generado ({voice_type}): {output_file} ({file_size} bytes)")
+        return f"/audio/{filename}.mp3"
+    except Exception as e:
+        logger.error(f"Error generando audio: {e}")
         return None
-    output_file = os.path.join(AUDIO_FOLDER, f"{filename}.mp3")
-    with open(output_file, "wb") as f:
-        f.write(response.content)
-    logger.info(f"✅ Audio generado: {output_file}")
-    return f"/audio/{filename}.mp3"
 
 def responder_con_tts_twiml(container, texto, call_sid, tag="msg"):
+    """
+    Genera y reproduce audio usando la voz asignada para esta sesión.
+    """
     filename = f"{call_sid}_{tag}_{abs(hash(texto))}"
-    mp3_url = texto_a_voz(texto, filename)
+    mp3_url = texto_a_voz(texto, filename, call_sid)
     if mp3_url:
-        container.play(f"{BASE_URL}{mp3_url}")
+        full_url = f"{BASE_URL}{mp3_url}"
+        logger.info(f"Reproduciendo audio: {full_url}")
+        container.play(full_url)
+    else:
+        logger.error(f"Error generando audio, usando fallback")
+        # Fallback a <Say> de Twilio si falla ElevenLabs
+        container.say(texto, language="es-MX", voice="Polly.Mia")
 
 # -------------------------------
 # Cache 
@@ -116,6 +171,7 @@ rut_attempts_cache = {}  # call_sid -> número de intentos
 rut_max_attempts = 3
 autorizacion_cache = {}
 session_metadata_cache = {}  # call_sid -> dict con metadata para Rasa
+voice_assignment_cache = {}  # call_sid -> voice_id asignado (para consistencia en la conversación)
 # -------------------------------
 # Rutas Flask
 # -------------------------------
@@ -128,12 +184,12 @@ def delegar_a_rasa(session_id, user_message):
         "metadata": metadata
     }
     try:
-        logger.info(f"📤 Enviando a Rasa: sender={session_id}, message='{user_message}', metadata={metadata}")
+        logger.info(f"Enviando a Rasa: sender={session_id}, message='{user_message}', metadata={metadata}")
         r = requests.post(RASA_URL, json=payload)
         r.raise_for_status()
         return r.json()  # lista de mensajes [{"recipient_id":..., "text":...}, ...]
     except Exception as e:
-        logger.error(f"❌ Error al comunicar con Rasa: {e}")
+        logger.error(f"Error al comunicar con Rasa: {e}")
         return []
 
 def verificar_rut_en_bd(rut: str):
@@ -150,12 +206,12 @@ def verificar_rut_en_bd(rut: str):
             cursor.execute(sql, (rut,))
             cliente = cursor.fetchone()
             if cliente:
-                logger.info(f"✅ Cliente encontrado en BD con RUT {rut}")
+                logger.info(f"Cliente encontrado en BD con RUT {rut}")
             else:
-                logger.warning(f"❌ RUT {rut} no encontrado en BD")
+                logger.warning(f"RUT {rut} no encontrado en BD")
             return cliente
     except Exception as e:
-        logger.error(f"⚠️ Error al verificar RUT en BD: {e}")
+        logger.error(f"Error al verificar RUT en BD: {e}")
         return None
     finally:
         if conn:
@@ -163,14 +219,24 @@ def verificar_rut_en_bd(rut: str):
 
 @app.route("/audio/<filename>")
 def serve_audio(filename):
-    return send_from_directory(AUDIO_FOLDER, filename)
+    """Sirve archivos de audio generados para Twilio"""
+    logger.info(f"Solicitud de audio: /audio/{filename}")
+    audio_path = os.path.join(AUDIO_FOLDER, filename)
+    
+    if not os.path.exists(audio_path):
+        logger.error(f"Archivo no encontrado: {audio_path}")
+        return "Audio file not found", 404
+    
+    file_size = os.path.getsize(audio_path)
+    logger.info(f"Sirviendo audio: {audio_path} ({file_size} bytes)")
+    return send_from_directory(AUDIO_FOLDER, filename, mimetype="audio/mpeg")
 
 @app.route("/webhook/twilio/voice", methods=["POST"])
 def incoming_call():
     call_sid = request.form.get("CallSid")
     from_number = request.form.get("From")
     phone_cache[call_sid] = from_number
-    logger.info(f"📞 Llamada entrante {call_sid} de {from_number}")
+    logger.info(f"Llamada entrante {call_sid} de {from_number}")
 
     customer = get_customer_by_phone(from_number)
     response = VoiceResponse()
@@ -254,7 +320,7 @@ def collect_rut():
         session_metadata_cache[call_sid]["customer_id"] = customer.get("rut")
         session_metadata_cache[call_sid]["customer_phone"] = customer.get("telefono")
         session_metadata_cache[call_sid]["customer_full_name"] = customer.get("nombre_completo")
-        logger.info(f"✅ Metadata de sesión actualizada para Rasa: {session_metadata_cache[call_sid]}")
+        logger.info(f"Metadata de sesión actualizada para Rasa: {session_metadata_cache[call_sid]}")
 
     # --- Inicio de sesión Rasa ---
     # Notificar a Rasa que la llamada está autenticada (incluye metadata)
@@ -278,7 +344,7 @@ def rasa_conversation():
     speech_text = request.form.get("SpeechResult", "").strip()
     response = VoiceResponse()
 
-    logger.info(f"🎤 Usuario dijo: {speech_text}")
+    logger.info(f"Usuario dijo: {speech_text}")
 
     if not speech_text:
         # Reintentar si no entendió
@@ -322,4 +388,41 @@ def rasa_conversation():
 # -------------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
+    
+    # Mostrar configuración de voces
+    print("\n" + "="*60)
+    print("Servidor Twilio Voice iniciando...")
+    print("="*60)
+    print(f"Puerto: {port}")
+    print(f"BASE_URL: {BASE_URL}")
+    print(f"Base de datos: {DB_CONFIG['host']}:{DB_CONFIG.get('port', 3306)}")
+    print(f"Rasa URL: {RASA_URL}")
+    print("")
+    print("Configuración de voces ElevenLabs:")
+    
+    voces_count = 0
+    if ELEVEN_VOICE_ID:
+        print(f"   [OK] Voz 1 (femenina): {ELEVEN_VOICE_ID[:12]}...")
+        voces_count += 1
+    else:
+        print(f"   [ERROR] Voz 1 (femenina): NO CONFIGURADA")
+    
+    if ELEVEN_VOICE_ID2:
+        print(f"   [OK] Voz 2 (masculina): {ELEVEN_VOICE_ID2[:12]}...")
+        voces_count += 1
+    else:
+        print(f"   [ERROR] Voz 2 (masculina): NO CONFIGURADA")
+    
+    if voces_count == 2:
+        print(f"\n   [INFO] Sistema con {voces_count} voces: selección aleatoria activa")
+        print(f"          Cada llamada será atendida por una voz diferente (femenina o masculina)")
+    elif voces_count == 1:
+        print(f"\n   [WARN] Solo 1 voz configurada: todas las llamadas usarán la misma voz")
+    else:
+        print(f"\n   [ERROR] ERROR: No hay voces configuradas")
+        print(f"           Configura ELEVEN_VOICE_ID y/o ELEVEN_VOICE_ID2 en .env")
+    
+    print("="*60)
+    print("")
+    
     app.run(host="0.0.0.0", port=port, debug=True, threaded=True)
