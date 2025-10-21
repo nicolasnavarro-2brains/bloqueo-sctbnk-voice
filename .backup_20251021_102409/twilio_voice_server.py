@@ -2,8 +2,10 @@
 import os
 import logging
 import re
+import uuid
 import random
-from flask import Flask, request, Response
+from datetime import datetime
+from flask import Flask, request, Response, send_from_directory
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import requests
 import pymysql
@@ -19,6 +21,10 @@ ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID")
 ELEVEN_VOICE_ID2 = os.getenv("ELEVEN_VOICE_ID2")
 RASA_URL = os.getenv("RASA_URL", "http://localhost:5005/webhooks/rest/webhook")
 BASE_URL = os.getenv("BASE_URL", "https://df4a6fec2ac0.ngrok-free.app")  # ngrok pública (sin espacio al final)
+
+# Carpeta para audios
+AUDIO_FOLDER = os.path.join(os.getcwd(), "audio")
+os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
 # Logger
 logging.basicConfig(level=logging.INFO)
@@ -248,7 +254,8 @@ def serve_audio(filename):
     logger.info(f"[MEMORIA] Sirviendo audio: {filename} ({file_size} bytes)")
     
     # Servir audio directamente desde memoria
-    return Response(audio_bytes, mimetype="audio/mpeg")
+    from flask import Response as FlaskResponse
+    return FlaskResponse(audio_bytes, mimetype="audio/mpeg")
 
 @app.route("/webhook/twilio/voice", methods=["POST"])
 def incoming_call():
