@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Base de datos MariaDB
+  mariadb:
+    image: mariadb:10.11
+    container_name: sctbnk-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-nico}
+      MYSQL_DATABASE: ${DB_NAME:-bank}
+      MYSQL_USER: ${DB_USER:-nico}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-nico}
+    ports:
+      - "3307:3306"  # Puerto 3307 en host -> 3306 en contenedor (evita conflicto con MariaDB local)
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - sctbnk-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Rasa Server
+  rasa:
+    build:
+      context: .
+      dockerfile: Dockerfile.rasa
+    container_name: sctbnk-rasa
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./domain:/app/domain
+    networks:
+      - sctbnk-network
+    depends_on:
+      - actions
+    env_file:
+      - .env
+    environment:
+      - RASA_HOME=/app
+      - RASA_PRO_LICENSE=${RASA_PRO_LICENSE}
+    command: run --enable-api --cors "*" --debug
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Rasa Actions Server
+  actions:
+    build:
+      context: .
+      dockerfile: Dockerfile.actions
+    container_name: sctbnk-actions
+    ports:
+      - "5055:5055"
+    volumes:
+      - ./actions:/app/actions
+    networks:
+      - sctbnk-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=mariadb
+      - DB_USER=${DB_USER:-nico}
+      - DB_PASSWORD=${DB_PASSWORD:-nico}
+      - DB_NAME=${DB_NAME:-bank}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5055/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Twilio Voice Server
+  twilio:
+    build:
+      context: .
+      dockerfile: Dockerfile.twilio
+    container_name: sctbnk-twilio
+    ports:
+      - "5000:5000"
+    networks:
+      - sctbnk-network
+    depends_on:
+      - rasa
+      - mariadb
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=mariadb
+      - DB_USER=${DB_USER:-nico}
+      - DB_PASSWORD=${DB_PASSWORD:-nico}
+      - DB_NAME=${DB_NAME:-bank}
+      - RASA_URL=http://rasa:5005/webhooks/rest/webhook
+      - PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sctbnk-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+    driver: local
+

@@ -1,0 +1,25 @@
+# Dockerfile para Rasa Server
+FROM rasa/rasa-pro:3.13.5
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de configuración y entrenamiento
+COPY config.yml /app/
+COPY domain /app/domain/
+COPY data /app/data/
+COPY endpoints.yml /app/
+
+# Copiar modelo entrenado (si existe)
+COPY models /app/models/
+
+# Variables de entorno
+ENV RASA_HOME=/app
+
+# Exponer puerto
+EXPOSE 5005
+
+# Comando para ejecutar Rasa
+# La variable RASA_PRO_LICENSE se pasa desde docker-compose.yml
+CMD ["run", "--enable-api", "--cors", "*", "--debug"]
+

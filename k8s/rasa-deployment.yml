@@ -1,0 +1,63 @@
+---
+# Deployment de Rasa
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rasa
+  namespace: sctbnk-voice
+  labels:
+    app: rasa
+spec:
+  replicas: 2  # 2 réplicas para alta disponibilidad
+  selector:
+    matchLabels:
+      app: rasa
+  template:
+    metadata:
+      labels:
+        app: rasa
+    spec:
+      containers:
+      - name: rasa
+        image: tu-registry/sctbnk-rasa:latest  # Cambiar por tu imagen
+        ports:
+        - containerPort: 5005
+        env:
+        - name: RASA_HOME
+          value: "/app"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5005
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+# Service de Rasa
+apiVersion: v1
+kind: Service
+metadata:
+  name: rasa-service
+  namespace: sctbnk-voice
+spec:
+  selector:
+    app: rasa
+  ports:
+    - protocol: TCP
+      port: 5005
+      targetPort: 5005
+  type: ClusterIP
+

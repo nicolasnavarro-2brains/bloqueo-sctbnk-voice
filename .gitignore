@@ -1,3 +1,16 @@
+# Secrets y credenciales
+.env
+.env.local
+.env.production
+*.key
+*.pem
+secrets/
+k8s/secrets.yml
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -173,3 +186,5 @@ credentials.yml
 
 /audio/
 *.mp3
+
+.backup_*

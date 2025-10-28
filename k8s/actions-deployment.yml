@@ -1,0 +1,63 @@
+---
+# Deployment de Rasa Actions
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: actions
+  namespace: sctbnk-voice
+  labels:
+    app: actions
+spec:
+  replicas: 2  # 2 réplicas para alta disponibilidad
+  selector:
+    matchLabels:
+      app: actions
+  template:
+    metadata:
+      labels:
+        app: actions
+    spec:
+      containers:
+      - name: actions
+        image: tu-registry/sctbnk-actions:latest  # Cambiar por tu imagen
+        ports:
+        - containerPort: 5055
+        envFrom:
+        - secretRef:
+            name: sctbnk-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5055
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5055
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+---
+# Service de Actions
+apiVersion: v1
+kind: Service
+metadata:
+  name: actions-service
+  namespace: sctbnk-voice
+spec:
+  selector:
+    app: actions
+  ports:
+    - protocol: TCP
+      port: 5055
+      targetPort: 5055
+  type: ClusterIP
+

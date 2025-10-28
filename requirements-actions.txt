@@ -1,0 +1,9 @@
+# Dependencias mínimas para Rasa Actions
+# El contenedor ya tiene rasa-sdk instalado como base
+
+# Para cargar variables de entorno
+python-dotenv==1.1.0
+
+# Para hacer requests a Freshdesk API
+requests==2.31.0
+

@@ -1,0 +1,26 @@
+# Dockerfile para Rasa Actions Server
+FROM rasa/rasa-sdk:3.9.0
+
+# Cambiar a root para instalar dependencias
+USER root
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar requirements específicos para actions (sin rasa completo)
+COPY requirements-actions.txt /app/
+RUN pip install --no-cache-dir -r requirements-actions.txt
+
+# Copiar el código de actions
+COPY actions /app/actions/
+COPY .env /app/.env
+
+# Exponer puerto
+EXPOSE 5055
+
+# Usuario no-root por seguridad
+USER 1001
+
+# Comando para ejecutar el servidor de actions
+CMD ["start", "--actions", "actions"]
+

@@ -1,0 +1,21 @@
+# Dependencias para el servidor Twilio Voice
+# No incluye Rasa (no lo necesita, solo se comunica con el API)
+
+# Framework web
+Flask==3.0.0
+
+# Twilio SDK para manejar llamadas
+twilio==8.10.0
+
+# Para hacer requests a Rasa API
+requests==2.31.0
+
+# Para cargar variables de entorno
+python-dotenv==1.1.0
+
+# Para conectar a MariaDB
+PyMySQL==1.1.0
+
+# ElevenLabs para TTS
+elevenlabs==0.2.27
+
