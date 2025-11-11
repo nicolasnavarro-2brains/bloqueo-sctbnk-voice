@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: sctbnk-voice
-  labels:
-    name: sctbnk-voice
-    environment: production
-
