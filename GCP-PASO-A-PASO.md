@@ -258,10 +258,10 @@ gcloud run deploy actions-server \
     --memory=512Mi \
     --port=5055 \
     --allow-unauthenticated \
-    --set-env-vars="DB_HOST=voicebot-db,DB_USER=nico,DB_PASSWORD=TU_PASSWORD,DB_NAME=bank"
+    --set-env-vars="DB_HOST=voicebot-db,DB_USER=nico,DB_PASSWORD=nico,DB_NAME=bank"
 
 # Guarda la URL
-ACTIONS_URL="https://actions-server-xxxxx.run.app"
+ACTIONS_URL="https://actions-server-813030270163.us-central1.run.app"
 ```
 
 ---
@@ -283,7 +283,7 @@ ELEVEN_VOICE_ID2=$ELEVEN_VOICE_ID2,FRESHDESK_API_KEY=$FRESHDESK_API_KEY,\
 FRESHDESK_DOMAIN=$FRESHDESK_DOMAIN"
 
 # ⭐ GUARDA ESTA URL - Es la que usarás en Twilio
-TWILIO_URL="https://twilio-server-xxxxx.run.app"
+TWILIO_URL="https://twilio-server-813030270163.us-central1.run.app"
 ```
 
 ✅ **Servicios desplegados**
@@ -322,7 +322,7 @@ gcloud run services update twilio-server \
 3. Selecciona tu número
 4. Scroll a **Voice Configuration**
 5. En **A CALL COMES IN**:
-   - Webhook: `https://twilio-server-xxxxx.run.app/webhook/twilio/voice`
+   - Webhook: `https://twilio-server-813030270163.us-central1.run.app/webhook/twilio/voice`
    - HTTP POST
 6. Click **Save**
 
@@ -335,7 +335,7 @@ gcloud run services update twilio-server \
 En el mismo número de Twilio:
 
 1. Scroll a **Call Status Changes**
-2. Status Callback URL: `https://twilio-server-xxxxx.run.app/webhook/twilio/status`
+2. Status Callback URL: `https://twilio-server-813030270163.us-central1.run.app/webhook/twilio/status`
 3. HTTP POST
 4. Events: `completed`, `failed`
 5. Click **Save**
@@ -350,13 +350,13 @@ En el mismo número de Twilio:
 
 ```bash
 # Verificar Rasa
-curl https://rasa-server-xxxxx.run.app
+curl https://rasa-server-813030270163.us-central1.run.app
 
 # Verificar Actions
-curl https://actions-server-xxxxx.run.app/health
+curl https://actions-server-813030270163.us-central1.run.app/health
 
 # Verificar Twilio
-curl https://twilio-server-xxxxx.run.app
+curl https://twilio-server-813030270163.us-central1.run.app
 ```
 
 ---

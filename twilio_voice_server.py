@@ -30,18 +30,30 @@ app = Flask(__name__)
 # -------------------------------
 # Base de datos
 # -------------------------------
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'nico'),
-    'password': os.getenv('DB_PASSWORD', 'nico'),
-    'database': os.getenv('DB_NAME', 'bank'),
-    'charset': 'utf8mb4',
-    'cursorclass': pymysql.cursors.DictCursor
-}
+def get_db_config():
+    """Construye configuración de DB según si es unix socket o TCP"""
+    db_host = os.getenv('DB_HOST', 'localhost')
+    config = {
+        'user': os.getenv('DB_USER', 'nico'),
+        'password': os.getenv('DB_PASSWORD', 'nico'),
+        'database': os.getenv('DB_NAME', 'bank'),
+        'charset': 'utf8mb4',
+        'cursorclass': pymysql.cursors.DictCursor
+    }
+    
+    # Si es unix socket (Cloud SQL), usar unix_socket en lugar de host
+    if db_host.startswith('/cloudsql/'):
+        config['unix_socket'] = db_host
+    else:
+        config['host'] = db_host
+        config['port'] = int(os.getenv('DB_PORT', 3306))
+    
+    return config
 
 def get_database_connection():
     try:
-        return pymysql.connect(**DB_CONFIG)
+        db_config = get_db_config()
+        return pymysql.connect(**db_config)
     except Exception as e:
         logger.error(f"Error conectando a la base de datos: {e}")
         return None
@@ -439,7 +451,11 @@ if __name__ == "__main__":
     print("="*60)
     print(f"Puerto: {port}")
     print(f"BASE_URL: {BASE_URL}")
-    print(f"Base de datos: {DB_CONFIG['host']}:{DB_CONFIG.get('port', 3306)}")
+    
+    # Mostrar configuración de BD
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT', '3306')
+    print(f"Base de datos: {db_host}:{db_port}")
     print(f"Rasa URL: {RASA_URL}")
     print("")
     print("Configuración de voces ElevenLabs:")
