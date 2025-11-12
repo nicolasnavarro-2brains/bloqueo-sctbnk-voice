@@ -111,11 +111,11 @@ steps:
     args:
       - '-c'
       - |
-        ACTIONS_URL=$(gcloud run services describe actions-server \
+        ACTIONS_URL=$$(gcloud run services describe actions-server \
           --region=us-central1 \
           --format='value(status.url)')
-        echo "ACTIONS_URL=$ACTIONS_URL" >> /workspace/env.txt
-        echo "Actions Server URL: $ACTIONS_URL"
+        echo "ACTIONS_URL=$$ACTIONS_URL" >> /workspace/env.txt
+        echo "Actions Server URL: $$ACTIONS_URL"
     waitFor: ['deploy-actions']
 
   # ============================================================
@@ -127,7 +127,7 @@ steps:
     args:
       - '-c'
       - |
-        ACTIONS_URL=$(grep ACTIONS_URL /workspace/env.txt | cut -d'=' -f2)
+        ACTIONS_URL=$$(grep ACTIONS_URL /workspace/env.txt | cut -d'=' -f2)
         gcloud run deploy rasa-server \
           --image=gcr.io/$PROJECT_ID/rasa:$SHORT_SHA \
           --region=us-central1 \
@@ -150,11 +150,11 @@ steps:
     args:
       - '-c'
       - |
-        RASA_URL=$(gcloud run services describe rasa-server \
+        RASA_URL=$$(gcloud run services describe rasa-server \
           --region=us-central1 \
           --format='value(status.url)')
-        echo "RASA_URL=$RASA_URL" >> /workspace/env.txt
-        echo "Rasa Server URL: $RASA_URL"
+        echo "RASA_URL=$$RASA_URL" >> /workspace/env.txt
+        echo "Rasa Server URL: $$RASA_URL"
     waitFor: ['deploy-rasa']
 
   # ============================================================
@@ -166,10 +166,10 @@ steps:
     args:
       - '-c'
       - |
-        SQL_CONN=$(gcloud sql instances describe voicebot-db \
+        SQL_CONN=$$(gcloud sql instances describe voicebot-db \
           --format='value(connectionName)')
-        echo "SQL_CONNECTION=$SQL_CONN" >> /workspace/env.txt
-        echo "SQL Connection: $SQL_CONN"
+        echo "SQL_CONNECTION=$$SQL_CONN" >> /workspace/env.txt
+        echo "SQL Connection: $$SQL_CONN"
     waitFor: ['-']
 
   # ============================================================
@@ -181,8 +181,8 @@ steps:
     args:
       - '-c'
       - |
-        RASA_URL=$(grep RASA_URL /workspace/env.txt | cut -d'=' -f2)
-        SQL_CONN=$(grep SQL_CONNECTION /workspace/env.txt | cut -d'=' -f2)
+        RASA_URL=$$(grep RASA_URL /workspace/env.txt | cut -d'=' -f2)
+        SQL_CONN=$$(grep SQL_CONNECTION /workspace/env.txt | cut -d'=' -f2)
         gcloud run deploy twilio-server \
           --image=gcr.io/$PROJECT_ID/twilio:$SHORT_SHA \
           --region=us-central1 \
@@ -217,14 +217,14 @@ steps:
     args:
       - '-c'
       - |
-        TWILIO_URL=$(gcloud run services describe twilio-server \
+        TWILIO_URL=$$(gcloud run services describe twilio-server \
           --region=us-central1 \
           --format='value(status.url)')
         gcloud run services update twilio-server \
           --region=us-central1 \
           --update-env-vars BASE_URL=$$TWILIO_URL \
           --quiet
-        echo "Twilio Server URL: $TWILIO_URL"
+        echo "Twilio Server URL: $$TWILIO_URL"
     waitFor: ['deploy-twilio']
 
 # ============================================================
