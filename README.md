@@ -206,4 +206,4 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 
 ---
 
-**¡Gracias por usar Bloqueo SCTBNK Voice!** 🎉
+**¡Gracias por usar Bloqueo SCTBNK Voice!**
