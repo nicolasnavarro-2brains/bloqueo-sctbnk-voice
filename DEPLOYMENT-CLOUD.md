@@ -5,7 +5,7 @@
 
 ---
 
-## 📦 Versiones Necesarias
+## Versiones Necesarias
 
 | Componente | Versión | Notas |
 |------------|---------|-------|
@@ -18,13 +18,70 @@
 
 ---
 
-## 🚀 Deployment Automatizado (Recomendado)
+## 🚀 Tres Formas de Hacer el Deployment
+
+### **Opción A: CI/CD Automático** 🔄 (Recomendado para Producción - 0 min manual)
+
+Push a Git → Deploy automático. Una vez configurado, no necesitas hacer nada.  
+**📄 Ver:** `CI-CD-SETUP.md`
+
+### **Opción B: Automatizado con Script** ⚡ (Rápido - 15 min)
+
+Un solo comando hace todo el deployment manualmente.
+
+### **Opción C: Manual Paso a Paso** 📖 (Para aprender - 2-3 horas)
+
+Deployment manual con explicaciones detalladas de cada paso.  
+**📄 Ver:** `GCP-DEPLOYMENT-MANUAL.md`
+
+---
+
+## 🔄 Opción A: CI/CD Automático (Cloud Build)
+
+**Ideal para:** Producción, múltiples desarrolladores, deployments frecuentes
+
+### Configuración (Una sola vez):
+
+```bash
+# 1. Configurar secrets y permisos
+./setup-cicd.sh
+
+# 2. Conectar GitHub con Cloud Build
+# Ir a: https://console.cloud.google.com/cloud-build/triggers
+# Seguir: CI-CD-SETUP.md
+```
+
+### Uso Diario:
+
+```bash
+# Hacer cambios
+git add .
+git commit -m "Nueva feature"
+git push origin main
+
+# Cloud Build automáticamente:
+# ✅ Build imágenes Docker
+# ✅ Deploy a Cloud Run
+# ✅ Sistema actualizado en 10-15 min
+```
+
+**Ventajas:**
+- ✅ Cero intervención manual
+- ✅ Historial de todos los deployments
+- ✅ Rollback fácil
+- ✅ Consistente cada vez
+
+**📄 Guía completa:** `CI-CD-SETUP.md`
+
+---
+
+## ⚡ Opción B: Deployment Automatizado con Script
 
 ### Requisitos Previos:
-- ✅ Cuenta GCP con proyecto creado
-- ✅ gcloud CLI instalado
-- ✅ Docker instalado
-- ✅ Archivo `.env` configurado
+- Cuenta GCP con proyecto creado
+- gcloud CLI instalado
+- Docker instalado
+- Archivo `.env` configurado
 
 ### Pasos:
 
@@ -46,20 +103,20 @@ gcloud config set project poc-preventa  # Cambiar por tu proyecto
 ```
 
 **El script automáticamente:**
-- ✅ Habilita APIs necesarias
-- ✅ Crea Cloud SQL con datos de prueba
-- ✅ Build de 3 imágenes Docker
-- ✅ Push a Google Container Registry
-- ✅ Deploy de Actions Server
-- ✅ Deploy de Rasa Server (con licencia Pro)
-- ✅ Deploy de Twilio Server (conectado a Cloud SQL)
-- ✅ Configura permisos y variables de entorno
+- Habilita APIs necesarias
+- Crea Cloud SQL con datos de prueba
+- Build de 3 imágenes Docker
+- Push a Google Container Registry
+- Deploy de Actions Server
+- Deploy de Rasa Server (con licencia Pro)
+- Deploy de Twilio Server (conectado a Cloud SQL)
+- Configura permisos y variables de entorno
 
 **Tiempo estimado:** 15-20 minutos
 
 ---
 
-## ⚙️ Variables de Entorno Clave
+## Variables de Entorno Clave
 
 ```bash
 # === RASA PRO ===
@@ -86,7 +143,7 @@ REGION="us-central1"
 
 ---
 
-## 📞 Configurar Twilio (Manual)
+## Configurar Twilio (Manual)
 
 ### Después del deployment, configurar en Twilio Console:
 
@@ -115,7 +172,7 @@ REGION="us-central1"
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Verificar Servicios:
 
@@ -139,19 +196,19 @@ gcloud run services logs tail twilio-server --region=us-central1
 | Carlos | +56955556666 | 55556666 |
 
 **Flujo esperado:**
-1. 🎙️ Bot saluda por nombre
-2. 📝 Ingresa RUT
-3. 🎙️ Bot pregunta: "¿En qué puedo ayudarte?"
-4. 🗣️ "Necesito bloquear mi tarjeta"
-5. 🎙️ Bot pide últimos 4 dígitos
-6. 📝 Ingresa: `1234`
-7. 🎙️ Bot confirma: "Encontré tu tarjeta terminada en 1 2 3 4"
-8. 🗣️ "Sí"
-9. ✅ Tarjeta bloqueada + ticket Freshdesk
+1. Bot saluda por nombre
+2. Ingresa RUT
+3. Bot pregunta: "¿En qué puedo ayudarte?"
+4. "Necesito bloquear mi tarjeta"
+5. Bot pide últimos 4 dígitos
+6. Ingresa: `1234`
+7. Bot confirma: "Encontré tu tarjeta terminada en 1 2 3 4"
+8. "Sí"
+9. Tarjeta bloqueada + ticket Freshdesk
 
 ---
 
-## 🔧 Comandos Útiles
+## Comandos Útiles
 
 ### Ver Logs:
 
@@ -188,7 +245,7 @@ gcloud run services list --region=us-central1 --format="table(metadata.name,stat
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Problema: "Número no registrado"
 
@@ -238,7 +295,7 @@ gcloud run services update twilio-server \
 
 ---
 
-## 📊 Arquitectura
+## Arquitectura
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -280,29 +337,7 @@ gcloud run services update twilio-server \
 
 ---
 
-## 💰 Costos Estimados (GCP)
-
-| Servicio | Config | Costo Mensual |
-|----------|--------|---------------|
-| Cloud Run - Twilio | 1 GB RAM | $5 - $15 |
-| Cloud Run - Rasa | 2 GB RAM | $15 - $30 |
-| Cloud Run - Actions | 512 MB | $3 - $10 |
-| Cloud SQL | db-f1-micro | $10 - $20 |
-| **TOTAL** | | **$33 - $75 USD** |
-
-*Basado en ~1000 llamadas/mes. Incluye almacenamiento y tráfico.*
-
----
-
-## 📚 Documentación Completa
-
-- **Arquitectura Técnica:** `ARQUITECTURA-TECNICA.md`
-- **Deployment Detallado:** `DEPLOYMENT-GCP.md`
-- **Repositorio:** https://github.com/nicolasnavarro-2brains/bloqueo-sctbnk-voice
-
----
-
-## ✅ Checklist de Deployment
+## Checklist de Deployment
 
 - [ ] Cuenta GCP creada y proyecto configurado
 - [ ] gcloud CLI instalado y autenticado
@@ -313,12 +348,4 @@ gcloud run services update twilio-server \
 - [ ] Webhooks de Twilio configurados
 - [ ] Test de llamada exitoso
 - [ ] Logs verificados sin errores
-
----
-
-**🎉 Sistema Listo**  
-**24/7 Disponible | Escalable | Sin depender de tu Mac**
-
-**Última actualización:** Noviembre 2025  
-**Mantenedor:** Nicolas Navarro
 
