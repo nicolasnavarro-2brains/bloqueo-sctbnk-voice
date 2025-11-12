@@ -136,7 +136,7 @@ steps:
           --memory=2Gi \
           --cpu=2 \
           --timeout=300 \
-          --set-env-vars RASA_PRO_LICENSE=$${_RASA_PRO_LICENSE},ACTION_SERVER_URL=$${ACTIONS_URL}/webhook \
+          --set-env-vars RASA_PRO_LICENSE=$${RASA_PRO_LICENSE},ACTION_SERVER_URL=$${ACTIONS_URL}/webhook \
           --quiet
     waitFor: ['push-rasa', 'get-actions-url']
     secretEnv: ['RASA_PRO_LICENSE']
@@ -197,13 +197,13 @@ steps:
             DB_HOST=/cloudsql/$${SQL_CONN},\
             DB_PORT=3306,\
             DB_USER=root,\
-            DB_PASSWORD=$${_DB_PASSWORD},\
+            DB_PASSWORD=$${DB_PASSWORD},\
             DB_NAME=bank,\
-            ELEVEN_API_KEY=$${_ELEVEN_API_KEY},\
-            ELEVEN_VOICE_ID=$${_ELEVEN_VOICE_ID},\
-            ELEVEN_VOICE_ID2=$${_ELEVEN_VOICE_ID2},\
-            FRESHDESK_API_KEY=$${_FRESHDESK_API_KEY},\
-            FRESHDESK_DOMAIN=$${_FRESHDESK_DOMAIN} \
+            ELEVEN_API_KEY=$${ELEVEN_API_KEY},\
+            ELEVEN_VOICE_ID=$${ELEVEN_VOICE_ID},\
+            ELEVEN_VOICE_ID2=$${ELEVEN_VOICE_ID2},\
+            FRESHDESK_API_KEY=$${FRESHDESK_API_KEY},\
+            FRESHDESK_DOMAIN=$${FRESHDESK_DOMAIN} \
           --quiet
     waitFor: ['push-twilio', 'get-rasa-url', 'get-sql-connection']
     secretEnv: ['DB_PASSWORD', 'ELEVEN_API_KEY', 'ELEVEN_VOICE_ID', 'ELEVEN_VOICE_ID2', 'FRESHDESK_API_KEY', 'FRESHDESK_DOMAIN']
