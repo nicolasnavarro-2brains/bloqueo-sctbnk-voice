@@ -127,7 +127,7 @@ steps:
     args:
       - '-c'
       - |
-        source /workspace/env.txt
+        ACTIONS_URL=$(grep ACTIONS_URL /workspace/env.txt | cut -d'=' -f2)
         gcloud run deploy rasa-server \
           --image=gcr.io/$PROJECT_ID/rasa:$SHORT_SHA \
           --region=us-central1 \
@@ -136,7 +136,7 @@ steps:
           --memory=2Gi \
           --cpu=2 \
           --timeout=300 \
-          --set-env-vars RASA_PRO_LICENSE=$${_RASA_PRO_LICENSE},ACTION_SERVER_URL=$$ACTIONS_URL/webhook \
+          --set-env-vars RASA_PRO_LICENSE=$${_RASA_PRO_LICENSE},ACTION_SERVER_URL=$${ACTIONS_URL}/webhook \
           --quiet
     waitFor: ['push-rasa', 'get-actions-url']
     secretEnv: ['RASA_PRO_LICENSE']
@@ -181,7 +181,8 @@ steps:
     args:
       - '-c'
       - |
-        source /workspace/env.txt
+        RASA_URL=$(grep RASA_URL /workspace/env.txt | cut -d'=' -f2)
+        SQL_CONN=$(grep SQL_CONNECTION /workspace/env.txt | cut -d'=' -f2)
         gcloud run deploy twilio-server \
           --image=gcr.io/$PROJECT_ID/twilio:$SHORT_SHA \
           --region=us-central1 \
@@ -189,11 +190,11 @@ steps:
           --allow-unauthenticated \
           --memory=1Gi \
           --cpu=1 \
-          --add-cloudsql-instances=$$SQL_CONNECTION \
+          --add-cloudsql-instances=$${SQL_CONN} \
           --set-env-vars \
             BASE_URL="TBD",\
-            RASA_URL=$$RASA_URL/webhooks/rest/webhook,\
-            DB_HOST=/cloudsql/$$SQL_CONNECTION,\
+            RASA_URL=$${RASA_URL}/webhooks/rest/webhook,\
+            DB_HOST=/cloudsql/$${SQL_CONN},\
             DB_PORT=3306,\
             DB_USER=root,\
             DB_PASSWORD=$${_DB_PASSWORD},\
