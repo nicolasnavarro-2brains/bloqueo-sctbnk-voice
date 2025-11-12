@@ -188,8 +188,18 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         RASA_URL=$$(grep RASA_URL /workspace/env.txt | cut -d'=' -f2)
         SQL_CONN=$$(grep SQL_CONNECTION /workspace/env.txt | cut -d'=' -f2)
+        if [ -z "$$RASA_URL" ]; then
+          echo "ERROR: RASA_URL no encontrado"
+          exit 1
+        fi
+        if [ -z "$$SQL_CONN" ]; then
+          echo "ERROR: SQL_CONN no encontrado"
+          exit 1
+        fi
+        echo "Deploying Twilio Server with RASA_URL=$$RASA_URL, SQL_CONN=$$SQL_CONN"
         gcloud run deploy twilio-server \
           --image=gcr.io/$PROJECT_ID/twilio:$SHORT_SHA \
           --region=us-central1 \
@@ -198,15 +208,10 @@ steps:
           --memory=1Gi \
           --cpu=1 \
           --add-cloudsql-instances=$${SQL_CONN} \
-          --set-secrets=DB_PASSWORD=db-password:latest,ELEVEN_API_KEY=eleven-api-key:latest,ELEVEN_VOICE_ID=eleven-voice-id:latest,ELEVEN_VOICE_ID2=eleven-voice-id2:latest,FRESHDESK_API_KEY=freshdesk-api-key:latest,FRESHDESK_DOMAIN=freshdesk-domain:latest \
-          --set-env-vars \
-            BASE_URL="TBD",\
-            RASA_URL=$${RASA_URL}/webhooks/rest/webhook,\
-            DB_HOST=/cloudsql/$${SQL_CONN},\
-            DB_PORT=3306,\
-            DB_USER=root,\
-            DB_NAME=bank \
+          --set-secrets="DB_PASSWORD=db-password:latest,ELEVEN_API_KEY=eleven-api-key:latest,ELEVEN_VOICE_ID=eleven-voice-id:latest,ELEVEN_VOICE_ID2=eleven-voice-id2:latest,FRESHDESK_API_KEY=freshdesk-api-key:latest,FRESHDESK_DOMAIN=freshdesk-domain:latest" \
+          --set-env-vars="BASE_URL=TBD,RASA_URL=$${RASA_URL}/webhooks/rest/webhook,DB_HOST=/cloudsql/$${SQL_CONN},DB_PORT=3306,DB_USER=root,DB_NAME=bank" \
           --quiet
+        echo "Twilio Server deployed successfully"
     waitFor: ['push-twilio', 'get-rasa-url', 'get-sql-connection']
 
   # ============================================================
