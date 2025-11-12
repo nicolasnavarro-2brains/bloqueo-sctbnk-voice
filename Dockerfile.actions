@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements-actions.txt
 
 # Copiar el código de actions
 COPY actions /app/actions/
-COPY .env /app/.env
+# .env no se copia - las variables vienen de Secret Manager en Cloud Run
 
 # Exponer puerto
 EXPOSE 5055

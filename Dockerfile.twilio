@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements-twilio.txt
 # Copiar código de la aplicación
 COPY twilio_voice_server.py /app/
 COPY elevenlabs_tts.py /app/
-COPY .env /app/
+# .env no se copia - las variables vienen de Secret Manager en Cloud Run
 
 # Crear carpeta para audio (aunque ahora usa RAM)
 RUN mkdir -p /app/audio
