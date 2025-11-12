@@ -127,7 +127,13 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         ACTIONS_URL=$$(grep ACTIONS_URL /workspace/env.txt | cut -d'=' -f2)
+        if [ -z "$$ACTIONS_URL" ]; then
+          echo "ERROR: ACTIONS_URL no encontrado"
+          exit 1
+        fi
+        echo "Deploying Rasa Server with ACTIONS_URL=$$ACTIONS_URL"
         gcloud run deploy rasa-server \
           --image=gcr.io/$PROJECT_ID/rasa:$SHORT_SHA \
           --region=us-central1 \
@@ -136,9 +142,10 @@ steps:
           --memory=2Gi \
           --cpu=2 \
           --timeout=300 \
-          --set-secrets=RASA_PRO_LICENSE=rasa-pro-license:latest \
-          --set-env-vars ACTION_SERVER_URL=$${ACTIONS_URL}/webhook \
+          --set-secrets="RASA_PRO_LICENSE=rasa-pro-license:latest" \
+          --set-env-vars="ACTION_SERVER_URL=$${ACTIONS_URL}/webhook" \
           --quiet
+        echo "Rasa Server deployed successfully"
     waitFor: ['push-rasa', 'get-actions-url']
 
   # ============================================================
