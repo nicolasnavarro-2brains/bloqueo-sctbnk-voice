@@ -10,8 +10,11 @@ COPY domain /app/domain/
 COPY data /app/data/
 COPY endpoints.yml /app/
 
-# Copiar modelo entrenado (si existe)
-COPY models /app/models/
+# Crear directorio de modelos y entrenar modelo
+RUN mkdir -p /app/models
+
+# Entrenar modelo durante el build (models/ no está en el repo por tamaño)
+RUN rasa train --quiet || echo "Training completado o ya existe modelo"
 
 # Variables de entorno
 ENV RASA_HOME=/app
