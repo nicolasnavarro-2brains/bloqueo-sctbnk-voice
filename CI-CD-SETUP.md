@@ -31,7 +31,24 @@ Sistema actualizado sin intervención manual
 
 ---
 
+## ⚡ Inicio Rápido (Si ejecutaste `setup-cicd.sh`)
+
+**Si ya ejecutaste `./setup-cicd.sh`, puedes saltar directamente a:**
+- **PARTE 2, Paso 2.2:** Conectar Repositorio GitHub
+- **PARTE 2, Paso 2.3:** Crear Trigger
+
+El script `setup-cicd.sh` ya configuró:
+- ✅ APIs habilitadas (Secret Manager, Cloud Build)
+- ✅ Secrets creados en Secret Manager
+- ✅ Permisos configurados (Cloud Build y Cloud Run)
+
+**Solo falta conectar GitHub y crear el trigger (5 minutos).**
+
+---
+
 ## 🚀 PARTE 1: Configurar Secret Manager
+
+> **Nota:** Si ejecutaste `./setup-cicd.sh`, puedes **saltar esta parte** y ir directamente a PARTE 2, Paso 2.2.
 
 **⏱️ Tiempo:** 10 minutos
 
@@ -147,6 +164,8 @@ gcloud secrets add-iam-policy-binding freshdesk-domain \
 
 ### **Paso 2.1: Habilitar Cloud Build API**
 
+> **Nota:** Si ejecutaste `./setup-cicd.sh`, este paso ya está hecho. Puedes saltarlo.
+
 ```bash
 gcloud services enable cloudbuild.googleapis.com
 ```
@@ -200,6 +219,8 @@ gcloud services enable cloudbuild.googleapis.com
 ---
 
 ### **Paso 2.4: Dar Permisos a Cloud Build y Cloud Run**
+
+> **Nota:** Si ejecutaste `./setup-cicd.sh`, este paso ya está hecho. Puedes saltarlo.
 
 Cloud Build necesita permisos para deployar a Cloud Run y acceder a Secret Manager:
 
