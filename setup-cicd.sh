@@ -105,8 +105,15 @@ echo -e "${BLUE}[3/5]${NC} Configurando permisos..."
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
 CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 
-# Permisos para Secret Manager
-echo "  - Permisos de Secret Manager..."
+# Permisos para Secret Manager (a nivel de proyecto y en secrets específicos)
+echo "  - Permisos de Secret Manager para Cloud Build..."
+# Permisos a nivel de proyecto
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${CLOUD_BUILD_SA}" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet > /dev/null 2>&1
+
+# Permisos en secrets específicos
 for secret in rasa-pro-license db-password eleven-api-key eleven-voice-id eleven-voice-id2 freshdesk-api-key freshdesk-domain; do
     gcloud secrets add-iam-policy-binding $secret \
         --member="serviceAccount:${CLOUD_BUILD_SA}" \
@@ -125,6 +132,23 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:${CLOUD_BUILD_SA}" \
     --role="roles/iam.serviceAccountUser" \
     --quiet > /dev/null 2>&1
+
+# Permisos de Secret Manager para Cloud Run Service Account
+echo "  - Permisos de Secret Manager para Cloud Run..."
+CLOUD_RUN_SA="${PROJECT_ID}@appspot.gserviceaccount.com"
+# Permisos a nivel de proyecto
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${CLOUD_RUN_SA}" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet > /dev/null 2>&1
+
+# Permisos en secrets específicos (necesarios para --set-secrets)
+for secret in rasa-pro-license db-password eleven-api-key eleven-voice-id eleven-voice-id2 freshdesk-api-key freshdesk-domain; do
+    gcloud secrets add-iam-policy-binding $secret \
+        --member="serviceAccount:${CLOUD_RUN_SA}" \
+        --role="roles/secretmanager.secretAccessor" \
+        --quiet > /dev/null 2>&1
+done
 
 echo -e "${GREEN}✓${NC} Permisos configurados"
 echo ""

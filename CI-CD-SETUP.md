@@ -199,25 +199,48 @@ gcloud services enable cloudbuild.googleapis.com
 
 ---
 
-### **Paso 2.4: Dar Permisos a Cloud Build**
+### **Paso 2.4: Dar Permisos a Cloud Build y Cloud Run**
 
-Cloud Build necesita permisos para deployar a Cloud Run:
+Cloud Build necesita permisos para deployar a Cloud Run y acceder a Secret Manager:
 
 ```bash
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+CLOUD_RUN_SA="${PROJECT_ID}@appspot.gserviceaccount.com"
 
-# Dar rol de Cloud Run Admin
+# Permisos para Cloud Build
+# 1. Secret Manager a nivel de proyecto
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --member="serviceAccount:${CLOUD_BUILD_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# 2. Cloud Run Admin
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${CLOUD_BUILD_SA}" \
   --role="roles/run.admin"
 
-# Dar rol de Service Account User
+# 3. Service Account User
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --member="serviceAccount:${CLOUD_BUILD_SA}" \
   --role="roles/iam.serviceAccountUser"
+
+# Permisos para Cloud Run Service Account (necesarios para --set-secrets)
+# 1. Secret Manager a nivel de proyecto
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${CLOUD_RUN_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# 2. Permisos en secrets específicos
+for secret in rasa-pro-license db-password eleven-api-key eleven-voice-id eleven-voice-id2 freshdesk-api-key freshdesk-domain; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member="serviceAccount:${CLOUD_RUN_SA}" \
+    --role="roles/secretmanager.secretAccessor"
+done
 ```
 
 ✅ **Permisos configurados**
+
+> **Nota:** Estos permisos son necesarios porque Cloud Run accede directamente a Secret Manager cuando usamos `--set-secrets` en lugar de `--set-env-vars`.
 
 ---
 
@@ -380,6 +403,121 @@ Si quieres más velocidad, puedes usar `E2_HIGHCPU_32` (más caro).
 4. Sistema actualizado automáticamente
    ✅ Sin intervención manual
 ```
+
+---
+
+## 🔧 Troubleshooting
+
+### **Problema 1: Build falla con "Permission denied" para Secret Manager**
+
+**Error:**
+```
+Permission 'secretmanager.versions.access' denied
+```
+
+**Solución:**
+```bash
+PROJECT_ID="tu-proyecto"
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+CLOUD_RUN_SA="${PROJECT_ID}@appspot.gserviceaccount.com"
+
+# Dar permisos a nivel de proyecto
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${CLOUD_BUILD_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${CLOUD_RUN_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Dar permisos en secrets específicos
+for secret in rasa-pro-license db-password eleven-api-key eleven-voice-id eleven-voice-id2 freshdesk-api-key freshdesk-domain; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member="serviceAccount:${CLOUD_BUILD_SA}" \
+    --role="roles/secretmanager.secretAccessor"
+  
+  gcloud secrets add-iam-policy-binding $secret \
+    --member="serviceAccount:${CLOUD_RUN_SA}" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+
+---
+
+### **Problema 2: Build falla en step "deploy-rasa" o "deploy-twilio"**
+
+**Error:**
+```
+Build step failed: step exited with non-zero status: 1
+```
+
+**Solución:**
+1. Verificar que los secrets existan:
+   ```bash
+   gcloud secrets list
+   ```
+
+2. Verificar que tengan versiones:
+   ```bash
+   gcloud secrets versions list rasa-pro-license
+   ```
+
+3. Verificar permisos (ver Problema 1)
+
+4. Revisar logs del build:
+   ```bash
+   gcloud builds log [BUILD_ID]
+   ```
+
+---
+
+### **Problema 3: Error de sintaxis YAML en cloudbuild.yaml**
+
+**Error:**
+```
+yaml: line X: could not find expected ':'
+```
+
+**Solución:**
+- Verificar que no haya problemas de indentación
+- Validar YAML:
+  ```bash
+  python3 -c "import yaml; yaml.safe_load(open('cloudbuild.yaml'))"
+  ```
+
+---
+
+### **Problema 4: Build funciona pero servicios no responden**
+
+**Solución:**
+1. Verificar que los servicios estén desplegados:
+   ```bash
+   gcloud run services list --region=us-central1
+   ```
+
+2. Verificar logs de Cloud Run:
+   ```bash
+   gcloud run services logs read twilio-server --region=us-central1
+   ```
+
+3. Verificar que las URLs estén configuradas en Twilio
+
+---
+
+### **Problema 5: Build tarda mucho tiempo**
+
+**Normal:**
+- Build completo: 20-30 minutos (entrena modelo Rasa)
+- Build sin entrenar: 10-15 minutos
+
+**Si tarda más:**
+- Verificar que no haya builds en cola
+- Considerar usar máquinas más potentes en `cloudbuild.yaml`:
+  ```yaml
+  options:
+    machineType: 'E2_HIGHCPU_8'
+  ```
 
 ---
 
